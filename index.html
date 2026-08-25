@@ -225,22 +225,65 @@
         const currentHour = String(now.getHours()).padStart(2, '0');
         const currentMin = String(now.getMinutes()).padStart(2, '0');
         const currentTime = `${currentHour}:${currentMin}`;
-        
-        const logged = (todayData.supplements || []).map(s => s.name.toLowerCase());
+
+        const dismissed = todayData.dueDismissed || [];
         
         // Check each logged supplement to see if it's due (past its scheduled time)
         const dueSupps = (todayData.supplements || []).filter(supp => {
           if (!supp.time || supp.time === 'No time set') return false;
-          return supp.time <= currentTime;
+          if (supp.time > currentTime) return false;
+          return !dismissed.includes('logged-' + supp.id);
         });
 
         // Also check recurring supplements
         const dueRecurring = Object.values(recurringSupps).filter(supp => {
           if (!supp.time) return false;
-          return supp.time <= currentTime;
+          if (supp.time > currentTime) return false;
+          return !dismissed.includes('recurring-' + supp.id);
         });
         
         return { logged: dueSupps, recurring: dueRecurring };
+      };
+
+      const markDueDone = (type, supp) => {
+        const key = `${type}-${supp.id}`;
+        const timestamp = new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        });
+
+        setEntries(prev => {
+          const prevDay = prev[dateKey] || {};
+          const prevSupplements = Array.isArray(prevDay.supplements) ? prevDay.supplements : [];
+          const prevDismissed = prevDay.dueDismissed || [];
+          let newSupplements = prevSupplements;
+          let newDismissed = [...prevDismissed, key];
+
+          if (type === 'recurring') {
+            const newEntryId = Date.now();
+            newSupplements = [...prevSupplements, { name: supp.name, time: supp.time, notes: '', timestamp, id: newEntryId }];
+            // Prevent the freshly-logged entry from immediately showing up as its own "due" reminder
+            newDismissed = [...newDismissed, `logged-${newEntryId}`];
+          }
+
+          return {
+            ...prev,
+            [dateKey]: {
+              ...prevDay,
+              supplements: newSupplements,
+              dueDismissed: newDismissed,
+            },
+          };
+        });
+
+        setActiveTab('supplements');
+
+        const targetId = type === 'logged' ? `entry-supplements-${supp.id}` : 'today-supplements-list';
+        setTimeout(() => {
+          const el = document.getElementById(targetId);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
       };
 
       const fastingStatus = getFastingStatus();
@@ -727,34 +770,50 @@
                   <div style={styles.cardTitle}>💊 Supplements Due</div>
                   <div style={{ fontSize: '16px', color: '#333', lineHeight: '2', fontWeight: '500' }}>
                     {dueSupps.recurring.map(supp => (
-                      <div key={supp.id} style={{ 
-                        marginBottom: '1.25rem',
-                        padding: '1.25rem',
-                        backgroundColor: '#fff3cd',
-                        border: '2px solid #ffc107',
-                        borderRadius: '8px',
-                        fontWeight: '600',
-                        fontSize: '18px'
-                      }}>
+                      <div
+                        key={supp.id}
+                        onClick={() => markDueDone('recurring', supp)}
+                        style={{ 
+                          marginBottom: '1.25rem',
+                          padding: '1.25rem',
+                          backgroundColor: '#fff3cd',
+                          border: '2px solid #ffc107',
+                          borderRadius: '8px',
+                          fontWeight: '600',
+                          fontSize: '18px',
+                          cursor: 'pointer',
+                        }}
+                      >
                         <div style={{ color: '#856404' }}>⏰ {supp.name} (Daily)</div>
                         <div style={{ fontSize: '15px', color: '#856404', marginTop: '0.3rem' }}>
                           Scheduled: {formatTime12h(supp.time)}
                         </div>
+                        <div style={{ fontSize: '13px', color: '#856404', marginTop: '0.5rem', fontWeight: '500', opacity: 0.8 }}>
+                          Tap to mark as done
+                        </div>
                       </div>
                     ))}
                     {dueSupps.logged.map(supp => (
-                      <div key={supp.id} style={{ 
-                        marginBottom: '1.25rem',
-                        padding: '1.25rem',
-                        backgroundColor: '#fff3cd',
-                        border: '2px solid #ffc107',
-                        borderRadius: '8px',
-                        fontWeight: '600',
-                        fontSize: '18px'
-                      }}>
+                      <div
+                        key={supp.id}
+                        onClick={() => markDueDone('logged', supp)}
+                        style={{ 
+                          marginBottom: '1.25rem',
+                          padding: '1.25rem',
+                          backgroundColor: '#fff3cd',
+                          border: '2px solid #ffc107',
+                          borderRadius: '8px',
+                          fontWeight: '600',
+                          fontSize: '18px',
+                          cursor: 'pointer',
+                        }}
+                      >
                         <div style={{ color: '#856404' }}>⏰ {supp.name}</div>
                         <div style={{ fontSize: '15px', color: '#856404', marginTop: '0.3rem' }}>
                           Scheduled: {formatTime12h(supp.time)}
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#856404', marginTop: '0.5rem', fontWeight: '500', opacity: 0.8 }}>
+                          Tap to mark as done
                         </div>
                       </div>
                     ))}
@@ -910,7 +969,7 @@
 
               {todayData.supplements && (
                 <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '1rem' }}>Today's Supplements</h3>
+                  <h3 id="today-supplements-list" style={{ fontSize: '18px', fontWeight: '700', marginBottom: '1rem' }}>Today's Supplements</h3>
                   {todayData.supplements.map(entry => (
                     <div key={entry.id} id={`entry-supplements-${entry.id}`} style={styles.entry}>
                       {isEditing('supplements', entry.id) ? (
