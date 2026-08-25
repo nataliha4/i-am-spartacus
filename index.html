@@ -595,17 +595,9 @@
                     </div>
                   )}
 
-                  {todayData.supplements && (
-                    <div style={{ marginBottom: '1rem' }}>
-                      <strong style={{ fontSize: '17px' }}>Supplements:</strong> {todayData.supplements.length} logged
-                    </div>
-                  )}
-
-                  {(todayData.symptoms || todayData.food || todayData.medical || todayData.gym) && (
+                  {(todayData.medical || todayData.gym) && (
                     <div>
                       <strong style={{ fontSize: '17px' }}>Other entries:</strong>
-                      {todayData.symptoms && ` Symptoms: ${todayData.symptoms.length}·`}
-                      {todayData.food && ` Food: ${todayData.food.length}·`}
                       {todayData.medical && ` Medical: ${todayData.medical.length}·`}
                       {todayData.gym && ` Gym: ${todayData.gym.length}`}
                     </div>
