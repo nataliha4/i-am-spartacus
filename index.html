@@ -613,6 +613,32 @@
                 </div>
               </div>
 
+              {dayTimeline.length > 0 && (
+                <div style={styles.card}>
+                  <div style={styles.cardTitle}>🕐 Day Timeline</div>
+                  <div>
+                    {dayTimeline.map(item => (
+                      <div key={item.id} style={styles.entry}>
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                          <div style={{ fontSize: '20px', minWidth: '28px' }}>{item.icon}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+                              <strong style={{ flex: 1, minWidth: 0 }}>{item.label}</strong>
+                              <span style={{ color: '#666', fontWeight: '600', fontSize: '16px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                {formatTime12h(item.time)}
+                              </span>
+                            </div>
+                            {item.detail && (
+                              <div style={{ marginTop: '0.3rem', fontSize: '14px', color: '#666' }}>{item.detail}</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {(dueSupps.logged.length > 0 || dueSupps.recurring.length > 0) && (
                 <div style={styles.card}>
                   <div style={styles.cardTitle}>💊 Supplements Due</div>
@@ -646,32 +672,6 @@
                         <div style={{ color: '#856404' }}>⏰ {supp.name}</div>
                         <div style={{ fontSize: '15px', color: '#856404', marginTop: '0.3rem' }}>
                           Scheduled: {formatTime12h(supp.time)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {dayTimeline.length > 0 && (
-                <div style={styles.card}>
-                  <div style={styles.cardTitle}>🕐 Day Timeline</div>
-                  <div>
-                    {dayTimeline.map(item => (
-                      <div key={item.id} style={styles.entry}>
-                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                          <div style={{ fontSize: '20px', minWidth: '28px' }}>{item.icon}</div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
-                              <strong style={{ flex: 1, minWidth: 0 }}>{item.label}</strong>
-                              <span style={{ color: '#666', fontWeight: '600', fontSize: '16px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                {formatTime12h(item.time)}
-                              </span>
-                            </div>
-                            {item.detail && (
-                              <div style={{ marginTop: '0.3rem', fontSize: '14px', color: '#666' }}>{item.detail}</div>
-                            )}
-                          </div>
                         </div>
                       </div>
                     ))}
