@@ -301,28 +301,31 @@
         },
         tabs: {
           display: 'flex',
-          gap: '1rem',
+          gap: '0.5rem',
           marginBottom: '2.5rem',
-          borderBottom: '3px solid #e0e0e0',
+          borderBottom: '2px solid #e0e0e0',
           overflowX: 'auto',
-          paddingBottom: '1.25rem',
+          paddingBottom: '1rem',
         },
         tab: {
-          padding: '1.25rem 1.5rem',
-          border: 'none',
+          padding: '0.75rem',
+          border: '2px solid transparent',
           backgroundColor: 'transparent',
           cursor: 'pointer',
-          fontSize: '18px',
+          fontSize: '26px',
           color: '#666',
-          borderBottom: '4px solid transparent',
-          marginBottom: '-1.25rem',
-          whiteSpace: 'nowrap',
-          fontWeight: '600',
+          borderRadius: '8px',
+          minWidth: '52px',
+          minHeight: '52px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          lineHeight: 1,
         },
         tabActive: {
-          color: '#333',
-          borderBottomColor: '#333',
-          fontWeight: '700',
+          backgroundColor: '#333',
+          borderColor: '#333',
         },
         content: {
           marginBottom: '2rem',
@@ -457,11 +460,12 @@
           <div style={styles.dateNav}>
             <div style={styles.dateNavRow}>
               <button
-                style={styles.dateButton}
-                onClick={() => {
+                style={{ ...styles.dateButton, outline: 'none', WebkitTapHighlightColor: 'transparent' }}
+                onClick={e => {
                   const d = new Date(currentDate);
                   d.setDate(d.getDate() - 1);
                   setCurrentDate(d.toISOString().split('T')[0]);
+                  e.currentTarget.blur();
                 }}
               >
                 ← Prev
@@ -472,17 +476,23 @@
                   ...(new Date(currentDate).toDateString() === new Date(new Date().toISOString().split('T')[0]).toDateString()
                     ? styles.dateButtonActive
                     : {}),
+                  outline: 'none',
+                  WebkitTapHighlightColor: 'transparent',
                 }}
-                onClick={() => setCurrentDate(new Date().toISOString().split('T')[0])}
+                onClick={e => {
+                  setCurrentDate(new Date().toISOString().split('T')[0]);
+                  e.currentTarget.blur();
+                }}
               >
                 Today
               </button>
               <button
-                style={styles.dateButton}
-                onClick={() => {
+                style={{ ...styles.dateButton, outline: 'none', WebkitTapHighlightColor: 'transparent' }}
+                onClick={e => {
                   const d = new Date(currentDate);
                   d.setDate(d.getDate() + 1);
                   setCurrentDate(d.toISOString().split('T')[0]);
+                  e.currentTarget.blur();
                 }}
               >
                 Next →
@@ -505,24 +515,31 @@
           {/* Tabs */}
           <div style={styles.tabs}>
             {[
-              { key: 'dashboard', label: '📊 Dashboard' },
-              { key: 'fasting', label: '⏳ Fasting' },
-              { key: 'supplements', label: '💊 Supplements' },
-              { key: 'symptoms', label: '🌡️ Symptoms' },
-              { key: 'weight', label: '📉 Weight' },
-              { key: 'food', label: '🍎 Food' },
-              { key: 'medical', label: '🏥 Medical' },
-              { key: 'gym', label: '🏋️‍♀️ Gym' },
+              { key: 'dashboard', icon: '📊', name: 'Dashboard' },
+              { key: 'fasting', icon: '⏳', name: 'Fasting' },
+              { key: 'supplements', icon: '💊', name: 'Supplements' },
+              { key: 'symptoms', icon: '🌡️', name: 'Symptoms' },
+              { key: 'weight', icon: '📉', name: 'Weight' },
+              { key: 'food', icon: '🍎', name: 'Food' },
+              { key: 'medical', icon: '🏥', name: 'Medical' },
+              { key: 'gym', icon: '🏋️‍♀️', name: 'Gym' },
             ].map(tab => (
               <button
                 key={tab.key}
                 style={{
                   ...styles.tab,
                   ...(activeTab === tab.key ? styles.tabActive : {}),
+                  outline: 'none',
+                  WebkitTapHighlightColor: 'transparent',
                 }}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={e => {
+                  setActiveTab(tab.key);
+                  e.currentTarget.blur();
+                }}
+                title={tab.name}
+                aria-label={tab.name}
               >
-                {tab.label}
+                {tab.icon}
               </button>
             ))}
           </div>
