@@ -274,22 +274,25 @@
         },
         dateNav: {
           display: 'flex',
-          gap: '1rem',
-          justifyContent: 'center',
+          flexDirection: 'column',
+          gap: '0.75rem',
           marginBottom: '2.5rem',
-          flexWrap: 'wrap',
+        },
+        dateNavRow: {
+          display: 'flex',
+          gap: '0.75rem',
         },
         dateButton: {
-          padding: '1rem 1.25rem',
+          padding: '1rem 0.5rem',
           border: '2px solid #d0d0d0',
           borderRadius: '8px',
           backgroundColor: '#fff',
           cursor: 'pointer',
-          fontSize: '18px',
+          fontSize: '16px',
           color: '#666',
           fontWeight: '600',
           minHeight: '52px',
-          minWidth: '80px',
+          flex: 1,
         },
         dateButtonActive: {
           backgroundColor: '#333',
@@ -452,27 +455,39 @@
 
           {/* Date Navigation */}
           <div style={styles.dateNav}>
-            <button
-              style={{
-                ...styles.dateButton,
-                ...(new Date(currentDate).toDateString() === new Date(new Date().toISOString().split('T')[0]).toDateString()
-                  ? styles.dateButtonActive
-                  : {}),
-              }}
-              onClick={() => setCurrentDate(new Date().toISOString().split('T')[0])}
-            >
-              Today
-            </button>
-            <button
-              style={styles.dateButton}
-              onClick={() => {
-                const d = new Date(currentDate);
-                d.setDate(d.getDate() - 1);
-                setCurrentDate(d.toISOString().split('T')[0]);
-              }}
-            >
-              ← Prev
-            </button>
+            <div style={styles.dateNavRow}>
+              <button
+                style={styles.dateButton}
+                onClick={() => {
+                  const d = new Date(currentDate);
+                  d.setDate(d.getDate() - 1);
+                  setCurrentDate(d.toISOString().split('T')[0]);
+                }}
+              >
+                ← Prev
+              </button>
+              <button
+                style={{
+                  ...styles.dateButton,
+                  ...(new Date(currentDate).toDateString() === new Date(new Date().toISOString().split('T')[0]).toDateString()
+                    ? styles.dateButtonActive
+                    : {}),
+                }}
+                onClick={() => setCurrentDate(new Date().toISOString().split('T')[0])}
+              >
+                Today
+              </button>
+              <button
+                style={styles.dateButton}
+                onClick={() => {
+                  const d = new Date(currentDate);
+                  d.setDate(d.getDate() + 1);
+                  setCurrentDate(d.toISOString().split('T')[0]);
+                }}
+              >
+                Next →
+              </button>
+            </div>
             <input
               type="date"
               value={currentDate}
@@ -481,19 +496,10 @@
                 ...styles.dateButton,
                 cursor: 'pointer',
                 textAlign: 'center',
-                flex: 1,
+                width: '100%',
+                boxSizing: 'border-box',
               }}
             />
-            <button
-              style={styles.dateButton}
-              onClick={() => {
-                const d = new Date(currentDate);
-                d.setDate(d.getDate() + 1);
-                setCurrentDate(d.toISOString().split('T')[0]);
-              }}
-            >
-              Next →
-            </button>
           </div>
 
           {/* Tabs */}
