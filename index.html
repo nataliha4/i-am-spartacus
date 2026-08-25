@@ -486,7 +486,7 @@
           items.push({
             id: 'symp-' + entry.id,
             time: entry.time && entry.time !== 'No time set' ? entry.time : null,
-            icon: '🌡️',
+            icon: '🤒',
             label: `${entry.symptom} — Level ${entry.level}/5`,
             detail: entry.notes || '',
             category: 'symptoms',
@@ -837,7 +837,7 @@
           <div style={styles.tabs}>
             {[
               { key: 'dashboard', icon: '📊', name: 'Dashboard' },
-              { key: 'symptoms', icon: '🌡️', name: 'Symptoms' },
+              { key: 'symptoms', icon: '🤒', name: 'Symptoms' },
               { key: 'food', icon: '🍎', name: 'Food' },
               { key: 'supplements', icon: '💊', name: 'Supplements' },
               { key: 'fasting', icon: '⏳', name: 'Fasting' },
@@ -1465,7 +1465,7 @@
           {activeTab === 'symptoms' && (
             <div style={styles.content}>
               <div style={styles.card}>
-                <div style={styles.cardTitle}>🌡️ Log Symptom</div>
+                <div style={styles.cardTitle}>🤒 Log Symptom</div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Symptom</label>
                   <input
