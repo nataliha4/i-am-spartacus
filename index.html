@@ -43,6 +43,8 @@
     const DailyTrackerApp = () => {
       const [entries, setEntries] = useState({});
       const [recurringSupps, setRecurringSupps] = useState({});
+      const [activeFast, setActiveFast] = useState(null);
+      const [nowTick, setNowTick] = useState(0);
       const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
       const [activeTab, setActiveTab] = useState('dashboard');
       const [formData, setFormData] = useState({
@@ -88,7 +90,30 @@
             console.error('Failed to load recurring supps');
           }
         }
+        const savedActiveFast = localStorage.getItem('activeFast');
+        if (savedActiveFast) {
+          try {
+            setActiveFast(JSON.parse(savedActiveFast));
+          } catch (e) {
+            console.error('Failed to load active fast');
+          }
+        }
       }, []);
+
+      // Tick every 30s so the live elapsed-fasting display stays current
+      useEffect(() => {
+        const interval = setInterval(() => setNowTick(t => t + 1), 30000);
+        return () => clearInterval(interval);
+      }, []);
+
+      // Save active fast to localStorage
+      useEffect(() => {
+        if (activeFast) {
+          localStorage.setItem('activeFast', JSON.stringify(activeFast));
+        } else {
+          localStorage.removeItem('activeFast');
+        }
+      }, [activeFast]);
 
       // Save to localStorage whenever entries change
       useEffect(() => {
@@ -107,6 +132,47 @@
         const hh = String(now.getHours()).padStart(2, '0');
         const mm = String(now.getMinutes()).padStart(2, '0');
         return `${hh}:${mm}`;
+      };
+
+      const startFast = () => {
+        const now = new Date();
+        setActiveFast({
+          startDateKey: now.toISOString().split('T')[0],
+          startTime: getCurrentTimeHHMM(),
+          startTimestampMs: now.getTime(),
+        });
+      };
+
+      const stopFast = () => {
+        if (!activeFast) return;
+        const endTime = getCurrentTimeHHMM();
+        const timestamp = new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        });
+        const startKey = activeFast.startDateKey;
+        setEntries(prev => {
+          const prevDay = prev[startKey] || {};
+          const prevFasting = Array.isArray(prevDay.fasting) ? prevDay.fasting : [];
+          return {
+            ...prev,
+            [startKey]: {
+              ...prevDay,
+              fasting: [...prevFasting, { start: activeFast.startTime, end: endTime, timestamp, id: Date.now() }],
+            },
+          };
+        });
+        setActiveFast(null);
+      };
+
+      const getElapsedFastLabel = () => {
+        if (!activeFast) return '';
+        const elapsedMs = Date.now() - activeFast.startTimestampMs;
+        const totalMinutes = Math.max(0, Math.floor(elapsedMs / 60000));
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        return `${hours}h ${minutes}m`;
       };
 
       const formatTime12h = (time24) => {
@@ -783,6 +849,27 @@
           {/* Dashboard Tab */}
           {activeTab === 'dashboard' && (
             <div style={styles.content}>
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>{activeFast ? '⏳ You\'re Fasting' : '🍽️ You\'re Eating'}</div>
+                {activeFast ? (
+                  <div>
+                    <div style={{ fontSize: '18px', fontWeight: '600', color: '#333', marginBottom: '0.5rem' }}>
+                      Fasting since {formatTime12h(activeFast.startTime)}
+                    </div>
+                    <div style={{ fontSize: '28px', fontWeight: '700', color: '#27ae60', marginBottom: '1rem' }}>
+                      {getElapsedFastLabel()} elapsed
+                    </div>
+                    <button onClick={stopFast} style={{ ...styles.button, backgroundColor: '#e74c3c' }}>
+                      Stop Fast
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={startFast} style={styles.button}>
+                    Start Fast
+                  </button>
+                )}
+              </div>
+
               <div style={styles.card}>
                 <div style={styles.cardTitle}>📊 Today's Summary</div>
                 <div style={{ fontSize: '16px', color: '#666', lineHeight: '2', fontWeight: '500' }}>
