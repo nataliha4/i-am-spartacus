@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Daily Tracker</title>
+  <title>I AM SPARTACUS! My Daily Tracker for Health and Activity</title>
   <style>
     * {
       margin: 0;
@@ -148,177 +148,195 @@
           fontFamily: 'system-ui, -apple-system, sans-serif',
           backgroundColor: '#ffffff',
           minHeight: '100vh',
-          padding: '1rem',
+          padding: '2rem 1.5rem',
         },
         header: {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '1.5rem',
-          borderBottom: '1px solid #e0e0e0',
-          paddingBottom: '1rem',
+          marginBottom: '2.5rem',
+          borderBottom: '2px solid #e0e0e0',
+          paddingBottom: '2rem',
         },
         title: {
-          fontSize: '24px',
-          fontWeight: '500',
+          fontSize: '40px',
+          fontWeight: '700',
           margin: 0,
+          letterSpacing: '-0.5px',
         },
         dateNav: {
           display: 'flex',
-          gap: '0.5rem',
+          gap: '1rem',
           justifyContent: 'center',
-          marginBottom: '1.5rem',
+          marginBottom: '2.5rem',
+          flexWrap: 'wrap',
         },
         dateButton: {
-          padding: '0.5rem 0.75rem',
-          border: '1px solid #d0d0d0',
-          borderRadius: '4px',
+          padding: '1rem 1.25rem',
+          border: '2px solid #d0d0d0',
+          borderRadius: '8px',
           backgroundColor: '#fff',
           cursor: 'pointer',
-          fontSize: '13px',
+          fontSize: '18px',
           color: '#666',
+          fontWeight: '600',
+          minHeight: '52px',
+          minWidth: '80px',
         },
         dateButtonActive: {
           backgroundColor: '#333',
           color: '#fff',
-          border: '1px solid #333',
+          border: '2px solid #333',
         },
         tabs: {
           display: 'flex',
-          gap: '0.5rem',
-          marginBottom: '1.5rem',
-          borderBottom: '1px solid #e0e0e0',
+          gap: '1rem',
+          marginBottom: '2.5rem',
+          borderBottom: '3px solid #e0e0e0',
           overflowX: 'auto',
-          paddingBottom: '0.5rem',
+          paddingBottom: '1.25rem',
         },
         tab: {
-          padding: '0.75rem 1rem',
+          padding: '1.25rem 1.5rem',
           border: 'none',
           backgroundColor: 'transparent',
           cursor: 'pointer',
-          fontSize: '13px',
+          fontSize: '18px',
           color: '#666',
-          borderBottom: '2px solid transparent',
-          marginBottom: '-0.5rem',
+          borderBottom: '4px solid transparent',
+          marginBottom: '-1.25rem',
           whiteSpace: 'nowrap',
+          fontWeight: '600',
         },
         tabActive: {
           color: '#333',
           borderBottomColor: '#333',
-          fontWeight: '500',
+          fontWeight: '700',
         },
         content: {
           marginBottom: '2rem',
         },
         card: {
-          backgroundColor: '#f8f8f8',
-          border: '1px solid #e0e0e0',
-          borderRadius: '8px',
-          padding: '1rem',
-          marginBottom: '1rem',
+          backgroundColor: '#f9f9f9',
+          border: '2px solid #e0e0e0',
+          borderRadius: '12px',
+          padding: '2rem',
+          marginBottom: '2rem',
         },
         cardTitle: {
-          fontSize: '14px',
-          fontWeight: '500',
+          fontSize: '24px',
+          fontWeight: '700',
           color: '#333',
-          marginBottom: '0.75rem',
+          marginBottom: '1.5rem',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          letterSpacing: '-0.3px',
         },
         cardLabel: {
-          fontSize: '13px',
+          fontSize: '18px',
           color: '#666',
-          marginTop: '0.75rem',
-          marginBottom: '0.25rem',
+          marginTop: '1.25rem',
+          marginBottom: '0.6rem',
+          fontWeight: '600',
         },
         formGroup: {
-          marginBottom: '1rem',
+          marginBottom: '2rem',
         },
         label: {
           display: 'block',
-          fontSize: '13px',
-          fontWeight: '500',
-          marginBottom: '0.4rem',
+          fontSize: '18px',
+          fontWeight: '700',
+          marginBottom: '0.8rem',
           color: '#333',
+          letterSpacing: '-0.2px',
         },
         input: {
           width: '100%',
-          padding: '0.5rem',
-          fontSize: '14px',
-          border: '1px solid #d0d0d0',
-          borderRadius: '4px',
+          padding: '1.25rem',
+          fontSize: '20px',
+          border: '2px solid #d0d0d0',
+          borderRadius: '8px',
           boxSizing: 'border-box',
+          minHeight: '56px',
         },
         select: {
           width: '100%',
-          padding: '0.5rem',
-          fontSize: '14px',
-          border: '1px solid #d0d0d0',
-          borderRadius: '4px',
+          padding: '1.25rem',
+          fontSize: '20px',
+          border: '2px solid #d0d0d0',
+          borderRadius: '8px',
           boxSizing: 'border-box',
+          minHeight: '56px',
         },
         textarea: {
           width: '100%',
-          padding: '0.5rem',
-          fontSize: '14px',
-          border: '1px solid #d0d0d0',
-          borderRadius: '4px',
-          minHeight: '60px',
+          padding: '1.25rem',
+          fontSize: '20px',
+          border: '2px solid #d0d0d0',
+          borderRadius: '8px',
+          minHeight: '120px',
           boxSizing: 'border-box',
           fontFamily: 'inherit',
           resize: 'vertical',
         },
         button: {
-          padding: '0.6rem 1rem',
+          padding: '1.25rem 2rem',
           backgroundColor: '#333',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontSize: '20px',
+          fontWeight: '700',
+          minHeight: '56px',
+          width: '100%',
+          letterSpacing: '-0.3px',
+        },
+        deleteButton: {
+          padding: '0.6rem 0.9rem',
+          backgroundColor: '#e74c3c',
           color: '#fff',
           border: 'none',
           borderRadius: '4px',
           cursor: 'pointer',
-          fontSize: '14px',
-          fontWeight: '500',
-        },
-        deleteButton: {
-          padding: '0.3rem 0.6rem',
-          backgroundColor: '#e74c3c',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '3px',
-          cursor: 'pointer',
-          fontSize: '12px',
+          fontSize: '15px',
+          fontWeight: '600',
         },
         entry: {
           backgroundColor: '#fff',
-          border: '1px solid #e0e0e0',
-          borderRadius: '6px',
-          padding: '0.75rem',
-          marginBottom: '0.75rem',
-          fontSize: '13px',
+          border: '2px solid #e0e0e0',
+          borderRadius: '10px',
+          padding: '1.5rem',
+          marginBottom: '1.25rem',
+          fontSize: '18px',
           color: '#333',
+          lineHeight: '1.8',
+          fontWeight: '500',
         },
         entryMeta: {
-          fontSize: '12px',
+          fontSize: '16px',
           color: '#999',
-          marginTop: '0.3rem',
+          marginTop: '0.75rem',
+          fontWeight: '400',
         },
         emptyState: {
           textAlign: 'center',
           color: '#999',
-          fontSize: '13px',
-          padding: '1.5rem',
+          fontSize: '18px',
+          padding: '2.5rem 1.5rem',
         },
         twoColumnForm: {
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
-          gap: '0.75rem',
+          gap: '1.5rem',
         },
       };
 
       return (
         <div style={styles.container}>
           <div style={styles.header}>
-            <h1 style={styles.title}>Daily Tracker</h1>
+            <h1 style={styles.title}>I AM SPARTACUS! | My Daily Tracker</h1>
           </div>
 
           {/* Date Navigation */}
@@ -388,25 +406,25 @@
             <div style={styles.content}>
               <div style={styles.card}>
                 <div style={styles.cardTitle}>📊 Today's Summary</div>
-                <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.8' }}>
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <strong>Date:</strong> {new Date(currentDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                <div style={{ fontSize: '16px', color: '#666', lineHeight: '2', fontWeight: '500' }}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <strong style={{ fontSize: '17px' }}>Date:</strong> {new Date(currentDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                   </div>
 
                   {fastingStatus && (
-                    <div style={{ marginBottom: '0.75rem' }}>
-                      <strong>Fasting:</strong> {fastingStatus.hours}h ({fastingStatus.start} – {fastingStatus.end})
-                      <div style={{ color: fastingStatus.hours >= 16 ? '#27ae60' : '#f39c12', fontSize: '12px', marginTop: '0.2rem' }}>
+                    <div style={{ marginBottom: '1rem' }}>
+                      <strong style={{ fontSize: '17px' }}>Fasting:</strong> {fastingStatus.hours}h ({fastingStatus.start} – {fastingStatus.end})
+                      <div style={{ color: fastingStatus.hours >= 16 ? '#27ae60' : '#f39c12', fontSize: '15px', marginTop: '0.3rem', fontWeight: '600' }}>
                         {fastingStatus.hours >= 16 ? '✓ Goal met!' : `${(16 - fastingStatus.hours).toFixed(1)}h to goal`}
                       </div>
                     </div>
                   )}
 
                   {todayData.weight && (
-                    <div style={{ marginBottom: '0.75rem' }}>
-                      <strong>Weight:</strong> {todayData.weight[todayData.weight.length - 1].weight} kg
+                    <div style={{ marginBottom: '1rem' }}>
+                      <strong style={{ fontSize: '17px' }}>Weight:</strong> {todayData.weight[todayData.weight.length - 1].weight} kg
                       {todayData.weight[todayData.weight.length - 1].target && (
-                        <div style={{ fontSize: '12px', color: '#999' }}>
+                        <div style={{ fontSize: '14px', color: '#999', marginTop: '0.3rem' }}>
                           Target: {todayData.weight[todayData.weight.length - 1].target} kg
                         </div>
                       )}
@@ -414,14 +432,14 @@
                   )}
 
                   {todayData.supplements && (
-                    <div style={{ marginBottom: '0.75rem' }}>
-                      <strong>Supplements:</strong> {todayData.supplements.length} logged
+                    <div style={{ marginBottom: '1rem' }}>
+                      <strong style={{ fontSize: '17px' }}>Supplements:</strong> {todayData.supplements.length} logged
                     </div>
                   )}
 
                   {(todayData.symptoms || todayData.food || todayData.medical || todayData.gym) && (
                     <div>
-                      <strong>Other entries:</strong>
+                      <strong style={{ fontSize: '17px' }}>Other entries:</strong>
                       {todayData.symptoms && ` Symptoms: ${todayData.symptoms.length}·`}
                       {todayData.food && ` Food: ${todayData.food.length}·`}
                       {todayData.medical && ` Medical: ${todayData.medical.length}·`}
