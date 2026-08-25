@@ -1053,6 +1053,119 @@
           {/* Supplements Tab */}
           {activeTab === 'supplements' && (
             <div style={styles.content}>
+              {Object.keys(recurringSupps).length > 0 && (
+                <div style={styles.card}>
+                  <div style={styles.cardTitle}>🔁 Recurring Supplements</div>
+                  {Object.values(recurringSupps)
+                    .slice()
+                    .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+                    .map(supp => {
+                      const isEditingThis = editingRecurringId === supp.id;
+
+                      if (isEditingThis) {
+                        return (
+                          <div
+                            key={supp.id}
+                            style={{
+                              padding: '1rem 1.25rem',
+                              backgroundColor: '#fff',
+                              border: '2px solid #333',
+                              borderRadius: '8px',
+                              marginBottom: '0.75rem',
+                            }}
+                          >
+                            <label style={{ fontSize: '13px', color: '#666' }}>Supplement name</label>
+                            <input
+                              type="text"
+                              value={editRecurringData.name}
+                              onChange={e => setEditRecurringData({ ...editRecurringData, name: e.target.value })}
+                              style={styles.editInput}
+                            />
+                            <label style={{ fontSize: '13px', color: '#666' }}>Time to remind me</label>
+                            <input
+                              type="time"
+                              value={editRecurringData.time}
+                              onChange={e => setEditRecurringData({ ...editRecurringData, time: e.target.value })}
+                              style={styles.editInput}
+                            />
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                              <button onClick={saveEditRecurring} style={styles.saveButton}>Save</button>
+                              <button onClick={cancelEditRecurring} style={styles.cancelButton}>Cancel</button>
+                              <button onClick={() => deleteRecurring(supp.id)} style={styles.deleteButton}>Delete</button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={supp.id}
+                          onClick={() => startEditRecurring(supp)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '1rem 1.25rem',
+                            backgroundColor: '#fff',
+                            border: '2px solid #e0e0e0',
+                            borderRadius: '8px',
+                            marginBottom: '0.75rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0, fontWeight: '600', fontSize: '17px', color: '#333' }}>
+                            {supp.name}
+                          </div>
+                          <div style={{ fontSize: '15px', color: '#666', fontWeight: '600', flexShrink: 0 }}>
+                            Daily at {formatTime12h(supp.time)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>🔁 Add Recurring Supplement</div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Supplement name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Magnesium"
+                    value={formData.recurringName}
+                    onChange={e => setFormData({ ...formData, recurringName: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Time to remind me</label>
+                  <input
+                    type="time"
+                    value={formData.recurringTime}
+                    onChange={e => setFormData({ ...formData, recurringTime: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    if (formData.recurringName && formData.recurringTime) {
+                      setRecurringSupps(prev => ({
+                        ...prev,
+                        [Date.now()]: {
+                          id: Date.now(),
+                          name: formData.recurringName,
+                          time: formData.recurringTime,
+                        }
+                      }));
+                      setFormData({ ...formData, recurringName: '', recurringTime: '' });
+                    }
+                  }}
+                  style={styles.button}
+                >
+                  Add Recurring Supplement
+                </button>
+              </div>
+
               <div style={styles.card}>
                 <div style={styles.cardTitle}>📝 Log Today's Supplements</div>
                 <div style={styles.formGroup}>
@@ -1155,119 +1268,6 @@
                       )}
                     </div>
                   ))}
-                </div>
-              )}
-
-              <div style={styles.card}>
-                <div style={styles.cardTitle}>🔁 Add Recurring Supplement</div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Supplement name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Magnesium"
-                    value={formData.recurringName}
-                    onChange={e => setFormData({ ...formData, recurringName: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Time to remind me</label>
-                  <input
-                    type="time"
-                    value={formData.recurringTime}
-                    onChange={e => setFormData({ ...formData, recurringTime: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <button
-                  onClick={() => {
-                    if (formData.recurringName && formData.recurringTime) {
-                      setRecurringSupps(prev => ({
-                        ...prev,
-                        [Date.now()]: {
-                          id: Date.now(),
-                          name: formData.recurringName,
-                          time: formData.recurringTime,
-                        }
-                      }));
-                      setFormData({ ...formData, recurringName: '', recurringTime: '' });
-                    }
-                  }}
-                  style={styles.button}
-                >
-                  Add Recurring Supplement
-                </button>
-              </div>
-
-              {Object.keys(recurringSupps).length > 0 && (
-                <div style={styles.card}>
-                  <div style={styles.cardTitle}>🔁 Recurring Supplements</div>
-                  {Object.values(recurringSupps)
-                    .slice()
-                    .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
-                    .map(supp => {
-                      const isEditingThis = editingRecurringId === supp.id;
-
-                      if (isEditingThis) {
-                        return (
-                          <div
-                            key={supp.id}
-                            style={{
-                              padding: '1rem 1.25rem',
-                              backgroundColor: '#fff',
-                              border: '2px solid #333',
-                              borderRadius: '8px',
-                              marginBottom: '0.75rem',
-                            }}
-                          >
-                            <label style={{ fontSize: '13px', color: '#666' }}>Supplement name</label>
-                            <input
-                              type="text"
-                              value={editRecurringData.name}
-                              onChange={e => setEditRecurringData({ ...editRecurringData, name: e.target.value })}
-                              style={styles.editInput}
-                            />
-                            <label style={{ fontSize: '13px', color: '#666' }}>Time to remind me</label>
-                            <input
-                              type="time"
-                              value={editRecurringData.time}
-                              onChange={e => setEditRecurringData({ ...editRecurringData, time: e.target.value })}
-                              style={styles.editInput}
-                            />
-                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                              <button onClick={saveEditRecurring} style={styles.saveButton}>Save</button>
-                              <button onClick={cancelEditRecurring} style={styles.cancelButton}>Cancel</button>
-                              <button onClick={() => deleteRecurring(supp.id)} style={styles.deleteButton}>Delete</button>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div
-                          key={supp.id}
-                          onClick={() => startEditRecurring(supp)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.75rem',
-                            padding: '1rem 1.25rem',
-                            backgroundColor: '#fff',
-                            border: '2px solid #e0e0e0',
-                            borderRadius: '8px',
-                            marginBottom: '0.75rem',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0, fontWeight: '600', fontSize: '17px', color: '#333' }}>
-                            {supp.name}
-                          </div>
-                          <div style={{ fontSize: '15px', color: '#666', fontWeight: '600', flexShrink: 0 }}>
-                            Daily at {formatTime12h(supp.time)}
-                          </div>
-                        </div>
-                      );
-                    })}
                 </div>
               )}
             </div>
