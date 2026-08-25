@@ -471,7 +471,10 @@
       return (
         <div style={styles.container}>
           <div style={styles.header}>
-            <div>
+            <div
+              onClick={() => setActiveTab('dashboard')}
+              style={{ cursor: 'pointer' }}
+            >
               <h1 style={styles.title}>💪 I AM SPARTACUS 💪</h1>
               <p style={styles.subtitle}>My Daily Tracker for Health and Activity</p>
             </div>
