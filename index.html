@@ -66,6 +66,8 @@
         gymNotes: '',
         recurringName: '',
         recurringTime: '',
+        recurringFrequency: 'daily',
+        recurringDayOfWeek: '1',
       });
 
       // Load data from localStorage
@@ -117,6 +119,15 @@
         return `${h}:${mStr} ${suffix}`;
       };
 
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const selectedDayOfWeek = new Date(currentDate).getDay();
+
+      const isSuppScheduledToday = (supp) => {
+        if (!supp.frequency || supp.frequency === 'daily') return true;
+        if (supp.frequency === 'weekly') return parseInt(supp.dayOfWeek, 10) === selectedDayOfWeek;
+        return true;
+      };
+
       const getTodayEntries = () => {
         return entries[dateKey] || {};
       };
@@ -160,6 +171,8 @@
           gymNotes: '',
           recurringName: '',
           recurringTime: '',
+          recurringFrequency: 'daily',
+          recurringDayOfWeek: '1',
         });
         setActiveTab('dashboard');
       };
@@ -305,7 +318,13 @@
       const saveEditRecurring = () => {
         setRecurringSupps(prev => ({
           ...prev,
-          [editingRecurringId]: { ...prev[editingRecurringId], name: editRecurringData.name, time: editRecurringData.time },
+          [editingRecurringId]: {
+            ...prev[editingRecurringId],
+            name: editRecurringData.name,
+            time: editRecurringData.time,
+            frequency: editRecurringData.frequency || 'daily',
+            dayOfWeek: editRecurringData.frequency === 'weekly' ? editRecurringData.dayOfWeek : undefined,
+          },
         }));
         cancelEditRecurring();
       };
@@ -839,11 +858,12 @@
                 </div>
               )}
 
-              {Object.keys(recurringSupps).length > 0 && (
+              {Object.values(recurringSupps).filter(isSuppScheduledToday).length > 0 && (
                 <div style={styles.card}>
                   <div style={styles.cardTitle}>💊 Supplements For Today</div>
                   <div>
                     {Object.values(recurringSupps)
+                      .filter(isSuppScheduledToday)
                       .slice()
                       .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
                       .map(supp => {
@@ -1081,6 +1101,29 @@
                               onChange={e => setEditRecurringData({ ...editRecurringData, name: e.target.value })}
                               style={styles.editInput}
                             />
+                            <label style={{ fontSize: '13px', color: '#666' }}>Frequency</label>
+                            <select
+                              value={editRecurringData.frequency || 'daily'}
+                              onChange={e => setEditRecurringData({ ...editRecurringData, frequency: e.target.value })}
+                              style={styles.editInput}
+                            >
+                              <option value="daily">Daily</option>
+                              <option value="weekly">Weekly</option>
+                            </select>
+                            {editRecurringData.frequency === 'weekly' && (
+                              <>
+                                <label style={{ fontSize: '13px', color: '#666' }}>Day of week</label>
+                                <select
+                                  value={editRecurringData.dayOfWeek ?? '1'}
+                                  onChange={e => setEditRecurringData({ ...editRecurringData, dayOfWeek: e.target.value })}
+                                  style={styles.editInput}
+                                >
+                                  {dayNames.map((day, idx) => (
+                                    <option key={idx} value={idx}>{day}</option>
+                                  ))}
+                                </select>
+                              </>
+                            )}
                             <label style={{ fontSize: '13px', color: '#666' }}>Time to remind me</label>
                             <input
                               type="time"
@@ -1117,7 +1160,9 @@
                             {supp.name}
                           </div>
                           <div style={{ fontSize: '15px', color: '#666', fontWeight: '600', flexShrink: 0 }}>
-                            Daily at {formatTime12h(supp.time)}
+                            {supp.frequency === 'weekly'
+                              ? `Weekly (${dayNames[parseInt(supp.dayOfWeek, 10)]}) at ${formatTime12h(supp.time)}`
+                              : `Daily at ${formatTime12h(supp.time)}`}
                           </div>
                         </div>
                       );
@@ -1138,6 +1183,31 @@
                   />
                 </div>
                 <div style={styles.formGroup}>
+                  <label style={styles.label}>Frequency</label>
+                  <select
+                    value={formData.recurringFrequency}
+                    onChange={e => setFormData({ ...formData, recurringFrequency: e.target.value })}
+                    style={styles.select}
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                  </select>
+                </div>
+                {formData.recurringFrequency === 'weekly' && (
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Day of week</label>
+                    <select
+                      value={formData.recurringDayOfWeek}
+                      onChange={e => setFormData({ ...formData, recurringDayOfWeek: e.target.value })}
+                      style={styles.select}
+                    >
+                      {dayNames.map((day, idx) => (
+                        <option key={idx} value={idx}>{day}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div style={styles.formGroup}>
                   <label style={styles.label}>Time to remind me</label>
                   <input
                     type="time"
@@ -1155,9 +1225,11 @@
                           id: Date.now(),
                           name: formData.recurringName,
                           time: formData.recurringTime,
+                          frequency: formData.recurringFrequency,
+                          dayOfWeek: formData.recurringFrequency === 'weekly' ? formData.recurringDayOfWeek : undefined,
                         }
                       }));
-                      setFormData({ ...formData, recurringName: '', recurringTime: '' });
+                      setFormData({ ...formData, recurringName: '', recurringTime: '', recurringFrequency: 'daily', recurringDayOfWeek: '1' });
                     }
                   }}
                   style={styles.button}
