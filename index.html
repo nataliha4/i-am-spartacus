@@ -89,6 +89,13 @@
 
       const dateKey = currentDate;
 
+      const getCurrentTimeHHMM = () => {
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        return `${hh}:${mm}`;
+      };
+
       const getTodayEntries = () => {
         return entries[dateKey] || {};
       };
@@ -186,6 +193,52 @@
 
       const fastingStatus = getFastingStatus();
       const dueSupps = getDueSupplements();
+
+      const getDayTimeline = () => {
+        const items = [];
+
+        (todayData.supplements || []).forEach(entry => {
+          items.push({
+            id: 'supp-' + entry.id,
+            time: entry.time && entry.time !== 'No time set' ? entry.time : null,
+            icon: '💊',
+            label: entry.name,
+            detail: entry.notes || '',
+          });
+        });
+
+        (todayData.symptoms || []).forEach(entry => {
+          items.push({
+            id: 'symp-' + entry.id,
+            time: entry.time && entry.time !== 'No time set' ? entry.time : null,
+            icon: '🌡️',
+            label: `${entry.symptom} — Level ${entry.level}/5`,
+            detail: entry.notes || '',
+          });
+        });
+
+        (todayData.food || []).forEach(entry => {
+          items.push({
+            id: 'food-' + entry.id,
+            time: entry.time && entry.time !== 'No time set' ? entry.time : null,
+            icon: '🍎',
+            label: entry.note,
+            detail: '',
+          });
+        });
+
+        // Sort by time (entries without a time go to the end)
+        items.sort((a, b) => {
+          if (!a.time && !b.time) return 0;
+          if (!a.time) return 1;
+          if (!b.time) return -1;
+          return a.time.localeCompare(b.time);
+        });
+
+        return items;
+      };
+
+      const dayTimeline = getDayTimeline();
 
       const styles = {
         container: {
@@ -556,6 +609,32 @@
                 </div>
               )}
 
+              {dayTimeline.length > 0 && (
+                <div style={styles.card}>
+                  <div style={styles.cardTitle}>🕐 Day Timeline</div>
+                  <div>
+                    {dayTimeline.map(item => (
+                      <div key={item.id} style={styles.entry}>
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                          <div style={{ fontSize: '20px', minWidth: '28px' }}>{item.icon}</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+                              <strong>{item.label}</strong>
+                              <span style={{ color: '#666', fontWeight: '600', fontSize: '16px' }}>
+                                {item.time || 'No time set'}
+                              </span>
+                            </div>
+                            {item.detail && (
+                              <div style={{ marginTop: '0.3rem', fontSize: '14px', color: '#666' }}>{item.detail}</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {Object.keys(todayData).length === 0 && (
                 <div style={styles.card}>
                   <div style={styles.emptyState}>No entries yet. Start tracking!</div>
@@ -662,7 +741,7 @@
                     if (formData.supplement) {
                       addEntry('supplements', {
                         name: formData.supplement,
-                        time: formData.supplementTime || 'No time set',
+                        time: formData.supplementTime || getCurrentTimeHHMM(),
                         notes: formData.supplementNotes,
                       });
                     }
@@ -835,7 +914,7 @@
                         level: formData.symptomLevel,
                         notes: formData.symptomNotes,
                         date: formData.symptomDate || currentDate,
-                        time: formData.symptomTime || 'No time set',
+                        time: formData.symptomTime || getCurrentTimeHHMM(),
                       });
                     }
                   }}
@@ -969,7 +1048,7 @@
                     if (formData.foodNote) {
                       addEntry('food', {
                         note: formData.foodNote,
-                        time: formData.foodTime || 'No time set',
+                        time: formData.foodTime || getCurrentTimeHHMM(),
                       });
                     }
                   }}
