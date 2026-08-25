@@ -1,0 +1,16 @@
+{
+  "name": "daily-tracker-app",
+  "version": "1.0.0",
+  "description": "A simple personal health and wellness tracking app",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 3000",
+    "build": "echo 'No build step needed - this is a static HTML + CDN React app'"
+  },
+  "keywords": ["tracker", "health", "wellness", "fasting"],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Tracker</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      background-color: #fafafa;
+    }
+    #root {
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const DailyTrackerApp = () => {
+      const [entries, setEntries] = useState({});
+      const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
+      const [activeTab, setActiveTab] = useState('dashboard');
+      const [formData, setFormData] = useState({
+        fastingStart: '',
+        fastingEnd: '',
+        supplement: '',
+        supplementTime: '',
+        supplementNotes: '',
+        symptom: '',
+        symptomLevel: 3,
+        symptomNotes: '',
+        weight: '',
+        targetWeight: '',
+        foodNote: '',
+        foodTime: '',
+        medicalEvent: '',
+        medicalNotes: '',
+        gymActivity: '',
+        gymNotes: '',
+      });
+
+      // Load data from localStorage
+      useEffect(() => {
+        const saved = localStorage.getItem('trackerData');
+        if (saved) {
+          try {
+            setEntries(JSON.parse(saved));
+          } catch (e) {
+            console.error('Failed to load saved data');
+          }
+        }
+      }, []);
+
+      // Save to localStorage whenever entries change
+      useEffect(() => {
+        localStorage.setItem('trackerData', JSON.stringify(entries));
+      }, [entries]);
+
+      const dateKey = currentDate;
+
+      const getTodayEntries = () => {
+        return entries[dateKey] || {};
+      };
+
+      const addEntry = (category, data) => {
+        const timestamp = new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        });
+
+        setEntries(prev => ({
+          ...prev,
+          [dateKey]: {
+            ...prev[dateKey],
+            [category]: Array.isArray(prev[dateKey]?.[category])
+              ? [...prev[dateKey][category], { ...data, timestamp, id: Date.now() }]
+              : [{ ...data, timestamp, id: Date.now() }],
+          },
+        }));
+
+        // Reset form
+        setFormData({
+          fastingStart: '',
+          fastingEnd: '',
+          supplement: '',
+          supplementTime: '',
+          supplementNotes: '',
+          symptom: '',
+          symptomLevel: 3,
+          symptomNotes: '',
+          weight: '',
+          targetWeight: '',
+          foodNote: '',
+          foodTime: '',
+          medicalEvent: '',
+          medicalNotes: '',
+          gymActivity: '',
+          gymNotes: '',
+        });
+        setActiveTab('dashboard');
+      };
+
+      const deleteEntry = (category, id) => {
+        setEntries(prev => ({
+          ...prev,
+          [dateKey]: {
+            ...prev[dateKey],
+            [category]: prev[dateKey][category].filter(item => item.id !== id),
+          },
+        }));
+      };
+
+      const todayData = getTodayEntries();
+
+      // Calculate fasting status
+      const getFastingStatus = () => {
+        const fast = todayData.fasting?.[0];
+        if (!fast) return null;
+
+        const start = new Date(`${currentDate}T${fast.start}`);
+        const end = new Date(`${currentDate}T${fast.end}`);
+        if (end < start) end.setDate(end.getDate() + 1);
+
+        const hours = (end - start) / (1000 * 60 * 60);
+        return { hours: Math.round(hours * 10) / 10, start: fast.start, end: fast.end };
+      };
+
+      const fastingStatus = getFastingStatus();
+
+      const styles = {
+        container: {
+          maxWidth: '600px',
+          margin: '0 auto',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          backgroundColor: '#ffffff',
+          minHeight: '100vh',
+          padding: '1rem',
+        },
+        header: {
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '1.5rem',
+          borderBottom: '1px solid #e0e0e0',
+          paddingBottom: '1rem',
+        },
+        title: {
+          fontSize: '24px',
+          fontWeight: '500',
+          margin: 0,
+        },
+        dateNav: {
+          display: 'flex',
+          gap: '0.5rem',
+          justifyContent: 'center',
+          marginBottom: '1.5rem',
+        },
+        dateButton: {
+          padding: '0.5rem 0.75rem',
+          border: '1px solid #d0d0d0',
+          borderRadius: '4px',
+          backgroundColor: '#fff',
+          cursor: 'pointer',
+          fontSize: '13px',
+          color: '#666',
+        },
+        dateButtonActive: {
+          backgroundColor: '#333',
+          color: '#fff',
+          border: '1px solid #333',
+        },
+        tabs: {
+          display: 'flex',
+          gap: '0.5rem',
+          marginBottom: '1.5rem',
+          borderBottom: '1px solid #e0e0e0',
+          overflowX: 'auto',
+          paddingBottom: '0.5rem',
+        },
+        tab: {
+          padding: '0.75rem 1rem',
+          border: 'none',
+          backgroundColor: 'transparent',
+          cursor: 'pointer',
+          fontSize: '13px',
+          color: '#666',
+          borderBottom: '2px solid transparent',
+          marginBottom: '-0.5rem',
+          whiteSpace: 'nowrap',
+        },
+        tabActive: {
+          color: '#333',
+          borderBottomColor: '#333',
+          fontWeight: '500',
+        },
+        content: {
+          marginBottom: '2rem',
+        },
+        card: {
+          backgroundColor: '#f8f8f8',
+          border: '1px solid #e0e0e0',
+          borderRadius: '8px',
+          padding: '1rem',
+          marginBottom: '1rem',
+        },
+        cardTitle: {
+          fontSize: '14px',
+          fontWeight: '500',
+          color: '#333',
+          marginBottom: '0.75rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        },
+        cardLabel: {
+          fontSize: '13px',
+          color: '#666',
+          marginTop: '0.75rem',
+          marginBottom: '0.25rem',
+        },
+        formGroup: {
+          marginBottom: '1rem',
+        },
+        label: {
+          display: 'block',
+          fontSize: '13px',
+          fontWeight: '500',
+          marginBottom: '0.4rem',
+          color: '#333',
+        },
+        input: {
+          width: '100%',
+          padding: '0.5rem',
+          fontSize: '14px',
+          border: '1px solid #d0d0d0',
+          borderRadius: '4px',
+          boxSizing: 'border-box',
+        },
+        select: {
+          width: '100%',
+          padding: '0.5rem',
+          fontSize: '14px',
+          border: '1px solid #d0d0d0',
+          borderRadius: '4px',
+          boxSizing: 'border-box',
+        },
+        textarea: {
+          width: '100%',
+          padding: '0.5rem',
+          fontSize: '14px',
+          border: '1px solid #d0d0d0',
+          borderRadius: '4px',
+          minHeight: '60px',
+          boxSizing: 'border-box',
+          fontFamily: 'inherit',
+          resize: 'vertical',
+        },
+        button: {
+          padding: '0.6rem 1rem',
+          backgroundColor: '#333',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          fontSize: '14px',
+          fontWeight: '500',
+        },
+        deleteButton: {
+          padding: '0.3rem 0.6rem',
+          backgroundColor: '#e74c3c',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '3px',
+          cursor: 'pointer',
+          fontSize: '12px',
+        },
+        entry: {
+          backgroundColor: '#fff',
+          border: '1px solid #e0e0e0',
+          borderRadius: '6px',
+          padding: '0.75rem',
+          marginBottom: '0.75rem',
+          fontSize: '13px',
+          color: '#333',
+        },
+        entryMeta: {
+          fontSize: '12px',
+          color: '#999',
+          marginTop: '0.3rem',
+        },
+        emptyState: {
+          textAlign: 'center',
+          color: '#999',
+          fontSize: '13px',
+          padding: '1.5rem',
+        },
+        twoColumnForm: {
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '0.75rem',
+        },
+      };
+
+      return (
+        <div style={styles.container}>
+          <div style={styles.header}>
+            <h1 style={styles.title}>Daily Tracker</h1>
+          </div>
+
+          {/* Date Navigation */}
+          <div style={styles.dateNav}>
+            <button
+              style={{
+                ...styles.dateButton,
+                ...(new Date(currentDate).toDateString() === new Date(new Date().toISOString().split('T')[0]).toDateString()
+                  ? styles.dateButtonActive
+                  : {}),
+              }}
+              onClick={() => setCurrentDate(new Date().toISOString().split('T')[0])}
+            >
+              Today
+            </button>
+            <button
+              style={styles.dateButton}
+              onClick={() => {
+                const d = new Date(currentDate);
+                d.setDate(d.getDate() - 1);
+                setCurrentDate(d.toISOString().split('T')[0]);
+              }}
+            >
+              ← Prev
+            </button>
+            <input
+              type="date"
+              value={currentDate}
+              onChange={e => setCurrentDate(e.target.value)}
+              style={{
+                ...styles.dateButton,
+                cursor: 'pointer',
+                textAlign: 'center',
+                flex: 1,
+              }}
+            />
+            <button
+              style={styles.dateButton}
+              onClick={() => {
+                const d = new Date(currentDate);
+                d.setDate(d.getDate() + 1);
+                setCurrentDate(d.toISOString().split('T')[0]);
+              }}
+            >
+              Next →
+            </button>
+          </div>
+
+          {/* Tabs */}
+          <div style={styles.tabs}>
+            {['dashboard', 'fasting', 'supplements', 'symptoms', 'weight', 'food', 'medical', 'gym'].map(tab => (
+              <button
+                key={tab}
+                style={{
+                  ...styles.tab,
+                  ...(activeTab === tab ? styles.tabActive : {}),
+                }}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {/* Dashboard Tab */}
+          {activeTab === 'dashboard' && (
+            <div style={styles.content}>
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>📊 Today's Summary</div>
+                <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.8' }}>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <strong>Date:</strong> {new Date(currentDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  </div>
+
+                  {fastingStatus && (
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <strong>Fasting:</strong> {fastingStatus.hours}h ({fastingStatus.start} – {fastingStatus.end})
+                      <div style={{ color: fastingStatus.hours >= 16 ? '#27ae60' : '#f39c12', fontSize: '12px', marginTop: '0.2rem' }}>
+                        {fastingStatus.hours >= 16 ? '✓ Goal met!' : `${(16 - fastingStatus.hours).toFixed(1)}h to goal`}
+                      </div>
+                    </div>
+                  )}
+
+                  {todayData.weight && (
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <strong>Weight:</strong> {todayData.weight[todayData.weight.length - 1].weight} kg
+                      {todayData.weight[todayData.weight.length - 1].target && (
+                        <div style={{ fontSize: '12px', color: '#999' }}>
+                          Target: {todayData.weight[todayData.weight.length - 1].target} kg
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {todayData.supplements && (
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <strong>Supplements:</strong> {todayData.supplements.length} logged
+                    </div>
+                  )}
+
+                  {(todayData.symptoms || todayData.food || todayData.medical || todayData.gym) && (
+                    <div>
+                      <strong>Other entries:</strong>
+                      {todayData.symptoms && ` Symptoms: ${todayData.symptoms.length}·`}
+                      {todayData.food && ` Food: ${todayData.food.length}·`}
+                      {todayData.medical && ` Medical: ${todayData.medical.length}·`}
+                      {todayData.gym && ` Gym: ${todayData.gym.length}`}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {Object.keys(todayData).length === 0 && (
+                <div style={styles.card}>
+                  <div style={styles.emptyState}>No entries yet. Start tracking!</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Fasting Tab */}
+          {activeTab === 'fasting' && (
+            <div style={styles.content}>
+              <div style={styles.card}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Fasting start time</label>
+                  <input
+                    type="time"
+                    value={formData.fastingStart}
+                    onChange={e => setFormData({ ...formData, fastingStart: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Fasting end time</label>
+                  <input
+                    type="time"
+                    value={formData.fastingEnd}
+                    onChange={e => setFormData({ ...formData, fastingEnd: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    if (formData.fastingStart && formData.fastingEnd) {
+                      addEntry('fasting', { start: formData.fastingStart, end: formData.fastingEnd });
+                    }
+                  }}
+                  style={styles.button}
+                >
+                  Log Fasting Window
+                </button>
+              </div>
+
+              {todayData.fasting && (
+                <div>
+                  <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Fasting Windows</h3>
+                  {todayData.fasting.map(entry => (
+                    <div key={entry.id} style={styles.entry}>
+                      {entry.start} → {entry.end}
+                      <div style={styles.entryMeta}>
+                        Logged: {entry.timestamp}
+                        <button
+                          onClick={() => deleteEntry('fasting', entry.id)}
+                          style={{
+                            ...styles.deleteButton,
+                            marginLeft: '0.5rem',
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Supplements Tab */}
+          {activeTab === 'supplements' && (
+            <div style={styles.content}>
+              <div style={styles.card}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Supplement name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Magnesium"
+                    value={formData.supplement}
+                    onChange={e => setFormData({ ...formData, supplement: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Time taken</label>
+                  <input
+                    type="time"
+                    value={formData.supplementTime}
+                    onChange={e => setFormData({ ...formData, supplementTime: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Notes (optional)</label>
+                  <textarea
+                    placeholder="e.g., Taken with food"
+                    value={formData.supplementNotes}
+                    onChange={e => setFormData({ ...formData, supplementNotes: e.target.value })}
+                    style={styles.textarea}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    if (formData.supplement) {
+                      addEntry('supplements', {
+                        name: formData.supplement,
+                        time: formData.supplementTime || 'No time set',
+                        notes: formData.supplementNotes,
+                      });
+                    }
+                  }}
+                  style={styles.button}
+                >
+                  Log Supplement
+                </button>
+              </div>
+
+              {todayData.supplements && (
+                <div>
+                  <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Supplements</h3>
+                  {todayData.supplements.map(entry => (
+                    <div key={entry.id} style={styles.entry}>
+                      <strong>{entry.name}</strong> at {entry.time}
+                      {entry.notes && <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#666' }}>Note: {entry.notes}</div>}
+                      <div style={styles.entryMeta}>
+                        Logged: {entry.timestamp}
+                        <button
+                          onClick={() => deleteEntry('supplements', entry.id)}
+                          style={{
+                            ...styles.deleteButton,
+                            marginLeft: '0.5rem',
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Symptoms Tab */}
+          {activeTab === 'symptoms' && (
+            <div style={styles.content}>
+              <div style={styles.card}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Symptom</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Headache"
+                    value={formData.symptom}
+                    onChange={e => setFormData({ ...formData, symptom: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Severity (1-5)</label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    value={formData.symptomLevel}
+                    onChange={e => setFormData({ ...formData, symptomLevel: parseInt(e.target.value) })}
+                    style={{ width: '100%' }}
+                  />
+                  <div style={{ textAlign: 'center', fontSize: '13px', color: '#666', marginTop: '0.3rem' }}>
+                    Level: {formData.symptomLevel} / 5
+                  </div>
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Notes (optional)</label>
+                  <textarea
+                    placeholder="e.g., Started after lunch"
+                    value={formData.symptomNotes}
+                    onChange={e => setFormData({ ...formData, symptomNotes: e.target.value })}
+                    style={styles.textarea}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    if (formData.symptom) {
+                      addEntry('symptoms', {
+                        symptom: formData.symptom,
+                        level: formData.symptomLevel,
+                        notes: formData.symptomNotes,
+                      });
+                    }
+                  }}
+                  style={styles.button}
+                >
+                  Log Symptom
+                </button>
+              </div>
+
+              {todayData.symptoms && (
+                <div>
+                  <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Symptoms</h3>
+                  {todayData.symptoms.map(entry => (
+                    <div key={entry.id} style={styles.entry}>
+                      <strong>{entry.symptom}</strong> — Level {entry.level}/5
+                      {entry.notes && <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#666' }}>{entry.notes}</div>}
+                      <div style={styles.entryMeta}>
+                        Logged: {entry.timestamp}
+                        <button
+                          onClick={() => deleteEntry('symptoms', entry.id)}
+                          style={{
+                            ...styles.deleteButton,
+                            marginLeft: '0.5rem',
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Weight Tab */}
+          {activeTab === 'weight' && (
+            <div style={styles.content}>
+              <div style={styles.card}>
+                <div style={styles.twoColumnForm}>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Weight (kg)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="e.g., 75.5"
+                      value={formData.weight}
+                      onChange={e => setFormData({ ...formData, weight: e.target.value })}
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Target weight (kg)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="e.g., 70"
+                      value={formData.targetWeight}
+                      onChange={e => setFormData({ ...formData, targetWeight: e.target.value })}
+                      style={styles.input}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (formData.weight) {
+                      addEntry('weight', {
+                        weight: formData.weight,
+                        target: formData.targetWeight,
+                      });
+                    }
+                  }}
+                  style={styles.button}
+                >
+                  Log Weight
+                </button>
+              </div>
+
+              {todayData.weight && (
+                <div>
+                  <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Weight</h3>
+                  {todayData.weight.map(entry => (
+                    <div key={entry.id} style={styles.entry}>
+                      <strong>{entry.weight} kg</strong>
+                      {entry.target && <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#666' }}>Target: {entry.target} kg</div>}
+                      <div style={styles.entryMeta}>
+                        Logged: {entry.timestamp}
+                        <button
+                          onClick={() => deleteEntry('weight', entry.id)}
+                          style={{
+                            ...styles.deleteButton,
+                            marginLeft: '0.5rem',
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Food Tab */}
+          {activeTab === 'food' && (
+            <div style={styles.content}>
+              <div style={styles.card}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>What did you eat?</label>
+                  <textarea
+                    placeholder="e.g., Grilled chicken, rice, and broccoli"
+                    value={formData.foodNote}
+                    onChange={e => setFormData({ ...formData, foodNote: e.target.value })}
+                    style={styles.textarea}
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Time (optional)</label>
+                  <input
+                    type="time"
+                    value={formData.foodTime}
+                    onChange={e => setFormData({ ...formData, foodTime: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    if (formData.foodNote) {
+                      addEntry('food', {
+                        note: formData.foodNote,
+                        time: formData.foodTime || 'No time set',
+                      });
+                    }
+                  }}
+                  style={styles.button}
+                >
+                  Log Food
+                </button>
+              </div>
+
+              {todayData.food && (
+                <div>
+                  <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Food</h3>
+                  {todayData.food.map(entry => (
+                    <div key={entry.id} style={styles.entry}>
+                      <div style={{ fontSize: '13px' }}>{entry.note}</div>
+                      <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#999' }}>at {entry.time}</div>
+                      <div style={styles.entryMeta}>
+                        Logged: {entry.timestamp}
+                        <button
+                          onClick={() => deleteEntry('food', entry.id)}
+                          style={{
+                            ...styles.deleteButton,
+                            marginLeft: '0.5rem',
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Medical Tab */}
+          {activeTab === 'medical' && (
+            <div style={styles.content}>
+              <div style={styles.card}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Medical event</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Doctor visit, blood test, vaccination"
+                    value={formData.medicalEvent}
+                    onChange={e => setFormData({ ...formData, medicalEvent: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Notes (optional)</label>
+                  <textarea
+                    placeholder="e.g., Results showed..."
+                    value={formData.medicalNotes}
+                    onChange={e => setFormData({ ...formData, medicalNotes: e.target.value })}
+                    style={styles.textarea}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    if (formData.medicalEvent) {
+                      addEntry('medical', {
+                        event: formData.medicalEvent,
+                        notes: formData.medicalNotes,
+                      });
+                    }
+                  }}
+                  style={styles.button}
+                >
+                  Log Medical Event
+                </button>
+              </div>
+
+              {todayData.medical && (
+                <div>
+                  <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Medical Events</h3>
+                  {todayData.medical.map(entry => (
+                    <div key={entry.id} style={styles.entry}>
+                      <strong>{entry.event}</strong>
+                      {entry.notes && <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#666' }}>{entry.notes}</div>}
+                      <div style={styles.entryMeta}>
+                        Logged: {entry.timestamp}
+                        <button
+                          onClick={() => deleteEntry('medical', entry.id)}
+                          style={{
+                            ...styles.deleteButton,
+                            marginLeft: '0.5rem',
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Gym Tab */}
+          {activeTab === 'gym' && (
+            <div style={styles.content}>
+              <div style={styles.card}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Gym activity</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Planet Fitness — Chest & Triceps"
+                    value={formData.gymActivity}
+                    onChange={e => setFormData({ ...formData, gymActivity: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Notes (optional)</label>
+                  <textarea
+                    placeholder="e.g., 60 min, felt strong"
+                    value={formData.gymNotes}
+                    onChange={e => setFormData({ ...formData, gymNotes: e.target.value })}
+                    style={styles.textarea}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    if (formData.gymActivity) {
+                      addEntry('gym', {
+                        activity: formData.gymActivity,
+                        notes: formData.gymNotes,
+                      });
+                    }
+                  }}
+                  style={styles.button}
+                >
+                  Log Gym Activity
+                </button>
+              </div>
+
+              {todayData.gym && (
+                <div>
+                  <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Gym Activity</h3>
+                  {todayData.gym.map(entry => (
+                    <div key={entry.id} style={styles.entry}>
+                      <strong>{entry.activity}</strong>
+                      {entry.notes && <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#666' }}>{entry.notes}</div>}
+                      <div style={styles.entryMeta}>
+                        Logged: {entry.timestamp}
+                        <button
+                          onClick={() => deleteEntry('gym', entry.id)}
+                          style={{
+                            ...styles.deleteButton,
+                            marginLeft: '0.5rem',
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<DailyTrackerApp />);
+  </script>
+</body>
+</html>
