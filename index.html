@@ -445,16 +445,25 @@
 
           {/* Tabs */}
           <div style={styles.tabs}>
-            {['dashboard', 'fasting', 'supplements', 'symptoms', 'weight', 'food', 'medical', 'gym'].map(tab => (
+            {[
+              { key: 'dashboard', label: '📊 Dashboard' },
+              { key: 'fasting', label: '⏳ Fasting' },
+              { key: 'supplements', label: '💊 Supplements' },
+              { key: 'symptoms', label: '🌡️ Symptoms' },
+              { key: 'weight', label: '📉 Weight' },
+              { key: 'food', label: '🍎 Food' },
+              { key: 'medical', label: '🏥 Medical' },
+              { key: 'gym', label: '🏋️‍♀️ Gym' },
+            ].map(tab => (
               <button
-                key={tab}
+                key={tab.key}
                 style={{
                   ...styles.tab,
-                  ...(activeTab === tab ? styles.tabActive : {}),
+                  ...(activeTab === tab.key ? styles.tabActive : {}),
                 }}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => setActiveTab(tab.key)}
               >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {tab.label}
               </button>
             ))}
           </div>
@@ -559,6 +568,7 @@
           {activeTab === 'fasting' && (
             <div style={styles.content}>
               <div style={styles.card}>
+                <div style={styles.cardTitle}>⏳ Log Fasting Window</div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Fasting start time</label>
                   <input
@@ -763,6 +773,7 @@
           {activeTab === 'symptoms' && (
             <div style={styles.content}>
               <div style={styles.card}>
+                <div style={styles.cardTitle}>🌡️ Log Symptom</div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Symptom</label>
                   <input
@@ -864,6 +875,7 @@
           {activeTab === 'weight' && (
             <div style={styles.content}>
               <div style={styles.card}>
+                <div style={styles.cardTitle}>📉 Log Weight</div>
                 <div style={styles.twoColumnForm}>
                   <div style={styles.formGroup}>
                     <label style={styles.label}>Weight (kg)</label>
@@ -933,6 +945,7 @@
           {activeTab === 'food' && (
             <div style={styles.content}>
               <div style={styles.card}>
+                <div style={styles.cardTitle}>🍎 Log Food</div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>What did you eat?</label>
                   <textarea
@@ -996,6 +1009,7 @@
           {activeTab === 'medical' && (
             <div style={styles.content}>
               <div style={styles.card}>
+                <div style={styles.cardTitle}>🏥 Log Medical Event</div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Medical event</label>
                   <input
@@ -1060,6 +1074,7 @@
           {activeTab === 'gym' && (
             <div style={styles.content}>
               <div style={styles.card}>
+                <div style={styles.cardTitle}>🏋️‍♀️ Log Gym Activity</div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Gym activity</label>
                   <input
