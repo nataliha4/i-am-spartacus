@@ -1,4 +1,4 @@
-# Daily Tracker App
+# I AM SPARTACUS | Daily Tracker App
 
 A simple, lightweight web app to track your daily health and wellness — fasting, supplements, symptoms, weight, food, medical events, and gym activity.
 
