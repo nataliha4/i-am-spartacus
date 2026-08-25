@@ -245,6 +245,50 @@
         return { logged: dueSupps, recurring: dueRecurring };
       };
 
+      const isRecurringDone = (supp) => {
+        const dismissed = todayData.dueDismissed || [];
+        return dismissed.includes(`recurring-${supp.id}`);
+      };
+
+      const uncheckRecurring = (supp) => {
+        const key = `recurring-${supp.id}`;
+        setEntries(prev => {
+          const prevDay = prev[dateKey] || {};
+          return {
+            ...prev,
+            [dateKey]: {
+              ...prevDay,
+              dueDismissed: (prevDay.dueDismissed || []).filter(k => k !== key),
+            },
+          };
+        });
+      };
+
+      const confirmRecurringDone = (supp, chosenTime) => {
+        const key = `recurring-${supp.id}`;
+        const timestamp = new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        });
+        setEntries(prev => {
+          const prevDay = prev[dateKey] || {};
+          const prevSupplements = Array.isArray(prevDay.supplements) ? prevDay.supplements : [];
+          const newEntryId = Date.now();
+          return {
+            ...prev,
+            [dateKey]: {
+              ...prevDay,
+              supplements: [...prevSupplements, { name: supp.name, time: chosenTime, notes: '', timestamp, id: newEntryId }],
+              dueDismissed: [...(prevDay.dueDismissed || []), key, `logged-${newEntryId}`],
+            },
+          };
+        });
+      };
+
+      const [confirmingSuppId, setConfirmingSuppId] = useState(null);
+      const [confirmTime, setConfirmTime] = useState('');
+
       const markDueDone = (type, supp) => {
         const key = `${type}-${supp.id}`;
         const timestamp = new Date().toLocaleTimeString('en-US', {
@@ -765,58 +809,116 @@
                 </div>
               )}
 
-              {(dueSupps.logged.length > 0 || dueSupps.recurring.length > 0) && (
+              {Object.keys(recurringSupps).length > 0 && (
                 <div style={styles.card}>
-                  <div style={styles.cardTitle}>💊 Supplements Due</div>
-                  <div style={{ fontSize: '16px', color: '#333', lineHeight: '2', fontWeight: '500' }}>
-                    {dueSupps.recurring.map(supp => (
-                      <div
-                        key={supp.id}
-                        onClick={() => markDueDone('recurring', supp)}
-                        style={{ 
-                          marginBottom: '1.25rem',
-                          padding: '1.25rem',
-                          backgroundColor: '#fff3cd',
-                          border: '2px solid #ffc107',
-                          borderRadius: '8px',
-                          fontWeight: '600',
-                          fontSize: '18px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <div style={{ color: '#856404' }}>⏰ {supp.name} (Daily)</div>
-                        <div style={{ fontSize: '15px', color: '#856404', marginTop: '0.3rem' }}>
-                          Scheduled: {formatTime12h(supp.time)}
-                        </div>
-                        <div style={{ fontSize: '13px', color: '#856404', marginTop: '0.5rem', fontWeight: '500', opacity: 0.8 }}>
-                          Tap to mark as done
-                        </div>
-                      </div>
-                    ))}
-                    {dueSupps.logged.map(supp => (
-                      <div
-                        key={supp.id}
-                        onClick={() => markDueDone('logged', supp)}
-                        style={{ 
-                          marginBottom: '1.25rem',
-                          padding: '1.25rem',
-                          backgroundColor: '#fff3cd',
-                          border: '2px solid #ffc107',
-                          borderRadius: '8px',
-                          fontWeight: '600',
-                          fontSize: '18px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <div style={{ color: '#856404' }}>⏰ {supp.name}</div>
-                        <div style={{ fontSize: '15px', color: '#856404', marginTop: '0.3rem' }}>
-                          Scheduled: {formatTime12h(supp.time)}
-                        </div>
-                        <div style={{ fontSize: '13px', color: '#856404', marginTop: '0.5rem', fontWeight: '500', opacity: 0.8 }}>
-                          Tap to mark as done
-                        </div>
-                      </div>
-                    ))}
+                  <div style={styles.cardTitle}>💊 Supplements For Today</div>
+                  <div>
+                    {Object.values(recurringSupps)
+                      .slice()
+                      .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+                      .map(supp => {
+                        const done = isRecurringDone(supp);
+                        const isConfirming = confirmingSuppId === supp.id;
+
+                        if (isConfirming) {
+                          return (
+                            <div
+                              key={supp.id}
+                              style={{
+                                padding: '1rem 1.25rem',
+                                backgroundColor: '#fff',
+                                border: '2px solid #333',
+                                borderRadius: '8px',
+                                marginBottom: '0.75rem',
+                              }}
+                            >
+                              <div style={{ fontWeight: '600', fontSize: '17px', marginBottom: '0.75rem' }}>
+                                {supp.name}
+                              </div>
+                              <label style={{ fontSize: '13px', color: '#666' }}>Time taken</label>
+                              <input
+                                type="time"
+                                value={confirmTime}
+                                onChange={e => setConfirmTime(e.target.value)}
+                                style={styles.editInput}
+                              />
+                              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                                <button
+                                  onClick={() => {
+                                    confirmRecurringDone(supp, confirmTime);
+                                    setConfirmingSuppId(null);
+                                  }}
+                                  style={styles.saveButton}
+                                >
+                                  Confirm
+                                </button>
+                                <button onClick={() => setConfirmingSuppId(null)} style={styles.cancelButton}>
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div
+                            key={supp.id}
+                            onClick={() => {
+                              if (done) {
+                                uncheckRecurring(supp);
+                              } else {
+                                setConfirmingSuppId(supp.id);
+                                setConfirmTime(getCurrentTimeHHMM());
+                              }
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.75rem',
+                              padding: '1rem 1.25rem',
+                              backgroundColor: done ? '#eafaf1' : '#fff',
+                              border: `2px solid ${done ? '#27ae60' : '#e0e0e0'}`,
+                              borderRadius: '8px',
+                              marginBottom: '0.75rem',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: '28px',
+                                height: '28px',
+                                minWidth: '28px',
+                                borderRadius: '50%',
+                                border: `2px solid ${done ? '#27ae60' : '#ccc'}`,
+                                backgroundColor: done ? '#27ae60' : 'transparent',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#fff',
+                                fontSize: '16px',
+                                fontWeight: '700',
+                              }}
+                            >
+                              {done ? '✓' : ''}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div
+                                style={{
+                                  fontWeight: '600',
+                                  fontSize: '17px',
+                                  color: done ? '#7a9e8c' : '#333',
+                                  textDecoration: done ? 'line-through' : 'none',
+                                }}
+                              >
+                                {supp.name}
+                              </div>
+                            </div>
+                            <div style={{ fontSize: '15px', color: '#666', fontWeight: '600', flexShrink: 0 }}>
+                              {formatTime12h(supp.time)}
+                            </div>
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
               )}
