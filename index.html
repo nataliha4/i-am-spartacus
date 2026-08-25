@@ -45,7 +45,10 @@
       const [recurringSupps, setRecurringSupps] = useState({});
       const [activeFast, setActiveFast] = useState(null);
       const [nowTick, setNowTick] = useState(0);
-      const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
+      const [currentDate, setCurrentDate] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      });
       const [activeTab, setActiveTab] = useState('dashboard');
       const [formData, setFormData] = useState({
         fastingStart: '',
@@ -127,6 +130,22 @@
 
       const dateKey = currentDate;
 
+      // Parse a 'YYYY-MM-DD' string as a LOCAL date (avoids the classic JS bug where
+      // new Date('YYYY-MM-DD') is parsed as UTC midnight and can display as the previous day)
+      const parseLocalDate = (dateStr) => {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        return new Date(y, m - 1, d);
+      };
+
+      // Format a Date object as 'YYYY-MM-DD' using LOCAL date parts (avoids toISOString(),
+      // which converts to UTC first and can shift the date near midnight in some timezones)
+      const formatDateLocal = (date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      };
+
       const getCurrentTimeHHMM = () => {
         const now = new Date();
         const hh = String(now.getHours()).padStart(2, '0');
@@ -137,7 +156,7 @@
       const startFast = () => {
         const now = new Date();
         setActiveFast({
-          startDateKey: now.toISOString().split('T')[0],
+          startDateKey: formatDateLocal(now),
           startTime: getCurrentTimeHHMM(),
           startTimestampMs: now.getTime(),
         });
@@ -186,7 +205,7 @@
       };
 
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      const selectedDayOfWeek = new Date(currentDate).getDay();
+      const selectedDayOfWeek = parseLocalDate(currentDate).getDay();
 
       const isSuppScheduledToday = (supp) => {
         if (!supp.frequency || supp.frequency === 'daily') return true;
@@ -764,9 +783,9 @@
               <button
                 style={{ ...styles.dateButton, outline: 'none', WebkitTapHighlightColor: 'transparent' }}
                 onClick={e => {
-                  const d = new Date(currentDate);
+                  const d = parseLocalDate(currentDate);
                   d.setDate(d.getDate() - 1);
-                  setCurrentDate(d.toISOString().split('T')[0]);
+                  setCurrentDate(formatDateLocal(d));
                   e.currentTarget.blur();
                 }}
               >
@@ -775,14 +794,14 @@
               <button
                 style={{
                   ...styles.dateButton,
-                  ...(new Date(currentDate).toDateString() === new Date(new Date().toISOString().split('T')[0]).toDateString()
+                  ...(currentDate === formatDateLocal(new Date())
                     ? styles.dateButtonActive
                     : {}),
                   outline: 'none',
                   WebkitTapHighlightColor: 'transparent',
                 }}
                 onClick={e => {
-                  setCurrentDate(new Date().toISOString().split('T')[0]);
+                  setCurrentDate(formatDateLocal(new Date()));
                   e.currentTarget.blur();
                 }}
               >
@@ -791,9 +810,9 @@
               <button
                 style={{ ...styles.dateButton, outline: 'none', WebkitTapHighlightColor: 'transparent' }}
                 onClick={e => {
-                  const d = new Date(currentDate);
+                  const d = parseLocalDate(currentDate);
                   d.setDate(d.getDate() + 1);
-                  setCurrentDate(d.toISOString().split('T')[0]);
+                  setCurrentDate(formatDateLocal(d));
                   e.currentTarget.blur();
                 }}
               >
@@ -874,7 +893,7 @@
                 <div style={styles.cardTitle}>📊 Today's Summary</div>
                 <div style={{ fontSize: '16px', color: '#666', lineHeight: '2', fontWeight: '500' }}>
                   <div style={{ marginBottom: '1rem' }}>
-                    <strong style={{ fontSize: '17px' }}>Date:</strong> {new Date(currentDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    <strong style={{ fontSize: '17px' }}>Date:</strong> {parseLocalDate(currentDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                   </div>
 
                   {fastingStatus && (
@@ -886,16 +905,26 @@
                     </div>
                   )}
 
-                  {todayData.weight && (
-                    <div style={{ marginBottom: '1rem' }}>
-                      <strong style={{ fontSize: '17px' }}>Weight:</strong> {todayData.weight[todayData.weight.length - 1].weight} kg
-                      {todayData.weight[todayData.weight.length - 1].target && (
-                        <div style={{ fontSize: '14px', color: '#999', marginTop: '0.3rem' }}>
-                          Target: {todayData.weight[todayData.weight.length - 1].target} kg
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {todayData.weight && (() => {
+                    const latest = todayData.weight[todayData.weight.length - 1];
+                    const current = parseFloat(latest.weight);
+                    const target = latest.target ? parseFloat(latest.target) : null;
+                    const diff = target !== null ? current - target : null;
+                    return (
+                      <div style={{ marginBottom: '1rem' }}>
+                        <strong style={{ fontSize: '17px' }}>Weight:</strong> {latest.weight} kg
+                        {target !== null && (
+                          <span style={{ fontSize: '14px', color: '#666', marginLeft: '0.5rem' }}>
+                            {diff > 0
+                              ? `· ${diff.toFixed(1)} kg to target (${latest.target} kg)`
+                              : diff < 0
+                              ? `· ${Math.abs(diff).toFixed(1)} kg under target (${latest.target} kg)`
+                              : `· At target (${latest.target} kg)`}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {(todayData.medical || todayData.gym) && (
                     <div>
