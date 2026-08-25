@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>💪 I AM SPARTACUS! 💪 My Daily Tracker for Health and Activity</title>
+  <title>💪 I AM SPARTACUS 💪</title>
   <style>
     * {
       margin: 0;
@@ -31,6 +31,7 @@
 
     const DailyTrackerApp = () => {
       const [entries, setEntries] = useState({});
+      const [recurringSupps, setRecurringSupps] = useState({});
       const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
       const [activeTab, setActiveTab] = useState('dashboard');
       const [formData, setFormData] = useState({
@@ -42,6 +43,8 @@
         symptom: '',
         symptomLevel: 3,
         symptomNotes: '',
+        symptomDate: '',
+        symptomTime: '',
         weight: '',
         targetWeight: '',
         foodNote: '',
@@ -50,6 +53,8 @@
         medicalNotes: '',
         gymActivity: '',
         gymNotes: '',
+        recurringName: '',
+        recurringTime: '',
       });
 
       // Load data from localStorage
@@ -62,12 +67,25 @@
             console.error('Failed to load saved data');
           }
         }
+        const savedRecurring = localStorage.getItem('recurringSupps');
+        if (savedRecurring) {
+          try {
+            setRecurringSupps(JSON.parse(savedRecurring));
+          } catch (e) {
+            console.error('Failed to load recurring supps');
+          }
+        }
       }, []);
 
       // Save to localStorage whenever entries change
       useEffect(() => {
         localStorage.setItem('trackerData', JSON.stringify(entries));
       }, [entries]);
+
+      // Save recurring supps to localStorage
+      useEffect(() => {
+        localStorage.setItem('recurringSupps', JSON.stringify(recurringSupps));
+      }, [recurringSupps]);
 
       const dateKey = currentDate;
 
@@ -102,6 +120,8 @@
           symptom: '',
           symptomLevel: 3,
           symptomNotes: '',
+          symptomDate: '',
+          symptomTime: '',
           weight: '',
           targetWeight: '',
           foodNote: '',
@@ -110,6 +130,8 @@
           medicalNotes: '',
           gymActivity: '',
           gymNotes: '',
+          recurringName: '',
+          recurringTime: '',
         });
         setActiveTab('dashboard');
       };
@@ -139,7 +161,31 @@
         return { hours: Math.round(hours * 10) / 10, start: fast.start, end: fast.end };
       };
 
+      const getDueSupplements = () => {
+        const now = new Date();
+        const currentHour = String(now.getHours()).padStart(2, '0');
+        const currentMin = String(now.getMinutes()).padStart(2, '0');
+        const currentTime = `${currentHour}:${currentMin}`;
+        
+        const logged = (todayData.supplements || []).map(s => s.name.toLowerCase());
+        
+        // Check each logged supplement to see if it's due (past its scheduled time)
+        const dueSupps = (todayData.supplements || []).filter(supp => {
+          if (!supp.time || supp.time === 'No time set') return false;
+          return supp.time <= currentTime;
+        });
+
+        // Also check recurring supplements
+        const dueRecurring = Object.values(recurringSupps).filter(supp => {
+          if (!supp.time) return false;
+          return supp.time <= currentTime;
+        });
+        
+        return { logged: dueSupps, recurring: dueRecurring };
+      };
+
       const fastingStatus = getFastingStatus();
+      const dueSupps = getDueSupplements();
 
       const styles = {
         container: {
@@ -152,7 +198,7 @@
         },
         header: {
           display: 'flex',
-          justifyContent: 'space-between',
+          justifyContent: 'center',
           alignItems: 'center',
           marginBottom: '2.5rem',
           borderBottom: '2px solid #e0e0e0',
@@ -163,6 +209,15 @@
           fontWeight: '700',
           margin: 0,
           letterSpacing: '-0.5px',
+          textAlign: 'center',
+        },
+        subtitle: {
+          fontSize: '15px',
+          fontWeight: '500',
+          color: '#666',
+          margin: 0,
+          marginTop: '0.5rem',
+          textAlign: 'center',
         },
         dateNav: {
           display: 'flex',
@@ -336,7 +391,10 @@
       return (
         <div style={styles.container}>
           <div style={styles.header}>
-            <h1 style={styles.title}>💪 I AM SPARTACUS 💪</h1>
+            <div>
+              <h1 style={styles.title}>💪 I AM SPARTACUS 💪</h1>
+              <p style={styles.subtitle}>My Daily Tracker for Health and Activity</p>
+            </div>
           </div>
 
           {/* Date Navigation */}
@@ -449,6 +507,46 @@
                 </div>
               </div>
 
+              {(dueSupps.logged.length > 0 || dueSupps.recurring.length > 0) && (
+                <div style={styles.card}>
+                  <div style={styles.cardTitle}>💊 Supplements Due</div>
+                  <div style={{ fontSize: '16px', color: '#333', lineHeight: '2', fontWeight: '500' }}>
+                    {dueSupps.recurring.map(supp => (
+                      <div key={supp.id} style={{ 
+                        marginBottom: '1.25rem',
+                        padding: '1.25rem',
+                        backgroundColor: '#fff3cd',
+                        border: '2px solid #ffc107',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                        fontSize: '18px'
+                      }}>
+                        <div style={{ color: '#856404' }}>⏰ {supp.name} (Daily)</div>
+                        <div style={{ fontSize: '15px', color: '#856404', marginTop: '0.3rem' }}>
+                          Scheduled: {supp.time}
+                        </div>
+                      </div>
+                    ))}
+                    {dueSupps.logged.map(supp => (
+                      <div key={supp.id} style={{ 
+                        marginBottom: '1.25rem',
+                        padding: '1.25rem',
+                        backgroundColor: '#fff3cd',
+                        border: '2px solid #ffc107',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                        fontSize: '18px'
+                      }}>
+                        <div style={{ color: '#856404' }}>⏰ {supp.name}</div>
+                        <div style={{ fontSize: '15px', color: '#856404', marginTop: '0.3rem' }}>
+                          Scheduled: {supp.time}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {Object.keys(todayData).length === 0 && (
                 <div style={styles.card}>
                   <div style={styles.emptyState}>No entries yet. Start tracking!</div>
@@ -520,6 +618,7 @@
           {activeTab === 'supplements' && (
             <div style={styles.content}>
               <div style={styles.card}>
+                <div style={styles.cardTitle}>📝 Log Today's Supplements</div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Supplement name</label>
                   <input
@@ -566,7 +665,7 @@
 
               {todayData.supplements && (
                 <div>
-                  <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Supplements</h3>
+                  <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '1rem' }}>Today's Supplements</h3>
                   {todayData.supplements.map(entry => (
                     <div key={entry.id} style={styles.entry}>
                       <strong>{entry.name}</strong> at {entry.time}
@@ -583,6 +682,76 @@
                           Delete
                         </button>
                       </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>📋 Set Up Daily Reminders</div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Supplement name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Magnesium"
+                    value={formData.recurringName}
+                    onChange={e => setFormData({ ...formData, recurringName: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Time to remind me</label>
+                  <input
+                    type="time"
+                    value={formData.recurringTime}
+                    onChange={e => setFormData({ ...formData, recurringTime: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    if (formData.recurringName && formData.recurringTime) {
+                      setRecurringSupps(prev => ({
+                        ...prev,
+                        [Date.now()]: {
+                          id: Date.now(),
+                          name: formData.recurringName,
+                          time: formData.recurringTime,
+                        }
+                      }));
+                      setFormData({ ...formData, recurringName: '', recurringTime: '' });
+                    }
+                  }}
+                  style={styles.button}
+                >
+                  Add Daily Reminder
+                </button>
+              </div>
+
+              {Object.keys(recurringSupps).length > 0 && (
+                <div style={styles.card}>
+                  <div style={styles.cardTitle}>⏰ Your Daily Supplements</div>
+                  {Object.values(recurringSupps).map(supp => (
+                    <div key={supp.id} style={styles.entry}>
+                      <strong style={{ fontSize: '18px' }}>{supp.name}</strong>
+                      <div style={{ marginTop: '0.5rem', fontSize: '16px', color: '#666' }}>
+                        Reminder at {supp.time}
+                      </div>
+                      <button
+                        onClick={() => {
+                          setRecurringSupps(prev => {
+                            const newSupps = { ...prev };
+                            delete newSupps[supp.id];
+                            return newSupps;
+                          });
+                        }}
+                        style={{
+                          ...styles.deleteButton,
+                          marginTop: '0.75rem',
+                        }}
+                      >
+                        Delete
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -618,6 +787,26 @@
                     Level: {formData.symptomLevel} / 5
                   </div>
                 </div>
+                <div style={styles.twoColumnForm}>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Date</label>
+                    <input
+                      type="date"
+                      value={formData.symptomDate}
+                      onChange={e => setFormData({ ...formData, symptomDate: e.target.value })}
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Time</label>
+                    <input
+                      type="time"
+                      value={formData.symptomTime}
+                      onChange={e => setFormData({ ...formData, symptomTime: e.target.value })}
+                      style={styles.input}
+                    />
+                  </div>
+                </div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Notes (optional)</label>
                   <textarea
@@ -634,6 +823,8 @@
                         symptom: formData.symptom,
                         level: formData.symptomLevel,
                         notes: formData.symptomNotes,
+                        date: formData.symptomDate || currentDate,
+                        time: formData.symptomTime || 'No time set',
                       });
                     }
                   }}
@@ -651,7 +842,7 @@
                       <strong>{entry.symptom}</strong> — Level {entry.level}/5
                       {entry.notes && <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#666' }}>{entry.notes}</div>}
                       <div style={styles.entryMeta}>
-                        Logged: {entry.timestamp}
+                        Occurred: {entry.date} at {entry.time} · Logged: {entry.timestamp}
                         <button
                           onClick={() => deleteEntry('symptoms', entry.id)}
                           style={{
