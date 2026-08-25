@@ -107,6 +107,16 @@
         return `${hh}:${mm}`;
       };
 
+      const formatTime12h = (time24) => {
+        if (!time24 || time24 === 'No time set') return time24 || 'No time set';
+        const [hStr, mStr] = time24.split(':');
+        let h = parseInt(hStr, 10);
+        const suffix = h >= 12 ? 'PM' : 'AM';
+        h = h % 12;
+        if (h === 0) h = 12;
+        return `${h}:${mStr} ${suffix}`;
+      };
+
       const getTodayEntries = () => {
         return entries[dateKey] || {};
       };
@@ -567,7 +577,7 @@
 
                   {fastingStatus && (
                     <div style={{ marginBottom: '1rem' }}>
-                      <strong style={{ fontSize: '17px' }}>Fasting:</strong> {fastingStatus.hours}h ({fastingStatus.start} – {fastingStatus.end})
+                      <strong style={{ fontSize: '17px' }}>Fasting:</strong> {fastingStatus.hours}h ({formatTime12h(fastingStatus.start)} – {formatTime12h(fastingStatus.end)})
                       <div style={{ color: fastingStatus.hours >= 16 ? '#27ae60' : '#f39c12', fontSize: '15px', marginTop: '0.3rem', fontWeight: '600' }}>
                         {fastingStatus.hours >= 16 ? '✓ Goal met!' : `${(16 - fastingStatus.hours).toFixed(1)}h to goal`}
                       </div>
@@ -619,7 +629,7 @@
                       }}>
                         <div style={{ color: '#856404' }}>⏰ {supp.name} (Daily)</div>
                         <div style={{ fontSize: '15px', color: '#856404', marginTop: '0.3rem' }}>
-                          Scheduled: {supp.time}
+                          Scheduled: {formatTime12h(supp.time)}
                         </div>
                       </div>
                     ))}
@@ -635,7 +645,7 @@
                       }}>
                         <div style={{ color: '#856404' }}>⏰ {supp.name}</div>
                         <div style={{ fontSize: '15px', color: '#856404', marginTop: '0.3rem' }}>
-                          Scheduled: {supp.time}
+                          Scheduled: {formatTime12h(supp.time)}
                         </div>
                       </div>
                     ))}
@@ -651,11 +661,11 @@
                       <div key={item.id} style={styles.entry}>
                         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                           <div style={{ fontSize: '20px', minWidth: '28px' }}>{item.icon}</div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
-                              <strong>{item.label}</strong>
-                              <span style={{ color: '#666', fontWeight: '600', fontSize: '16px' }}>
-                                {item.time || 'No time set'}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+                              <strong style={{ flex: 1, minWidth: 0 }}>{item.label}</strong>
+                              <span style={{ color: '#666', fontWeight: '600', fontSize: '16px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                {formatTime12h(item.time)}
                               </span>
                             </div>
                             {item.detail && (
@@ -717,7 +727,7 @@
                   <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Fasting Windows</h3>
                   {todayData.fasting.map(entry => (
                     <div key={entry.id} style={styles.entry}>
-                      {entry.start} → {entry.end}
+                      {formatTime12h(entry.start)} → {formatTime12h(entry.end)}
                       <div style={styles.entryMeta}>
                         Logged: {entry.timestamp}
                         <button
@@ -791,7 +801,7 @@
                   <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '1rem' }}>Today's Supplements</h3>
                   {todayData.supplements.map(entry => (
                     <div key={entry.id} style={styles.entry}>
-                      <strong>{entry.name}</strong> at {entry.time}
+                      <strong>{entry.name}</strong> at {formatTime12h(entry.time)}
                       {entry.notes && <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#666' }}>Note: {entry.notes}</div>}
                       <div style={styles.entryMeta}>
                         Logged: {entry.timestamp}
@@ -858,7 +868,7 @@
                     <div key={supp.id} style={styles.entry}>
                       <strong style={{ fontSize: '18px' }}>{supp.name}</strong>
                       <div style={{ marginTop: '0.5rem', fontSize: '16px', color: '#666' }}>
-                        Reminder at {supp.time}
+                        Reminder at {formatTime12h(supp.time)}
                       </div>
                       <button
                         onClick={() => {
@@ -966,7 +976,7 @@
                       <strong>{entry.symptom}</strong> — Level {entry.level}/5
                       {entry.notes && <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#666' }}>{entry.notes}</div>}
                       <div style={styles.entryMeta}>
-                        Occurred: {entry.date} at {entry.time} · Logged: {entry.timestamp}
+                        Occurred: {entry.date} at {formatTime12h(entry.time)} · Logged: {entry.timestamp}
                         <button
                           onClick={() => deleteEntry('symptoms', entry.id)}
                           style={{
@@ -1098,7 +1108,7 @@
                   {todayData.food.map(entry => (
                     <div key={entry.id} style={styles.entry}>
                       <div style={{ fontSize: '13px' }}>{entry.note}</div>
-                      <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#999' }}>at {entry.time}</div>
+                      <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#999' }}>at {formatTime12h(entry.time)}</div>
                       <div style={styles.entryMeta}>
                         Logged: {entry.timestamp}
                         <button
