@@ -256,6 +256,8 @@
             icon: '💊',
             label: entry.name,
             detail: entry.notes || '',
+            category: 'supplements',
+            entry: entry,
           });
         });
 
@@ -266,6 +268,8 @@
             icon: '🌡️',
             label: `${entry.symptom} — Level ${entry.level}/5`,
             detail: entry.notes || '',
+            category: 'symptoms',
+            entry: entry,
           });
         });
 
@@ -276,6 +280,8 @@
             icon: '🍎',
             label: entry.note,
             detail: '',
+            category: 'food',
+            entry: entry,
           });
         });
 
@@ -683,7 +689,19 @@
                   <div style={styles.cardTitle}>🕐 Day Timeline</div>
                   <div>
                     {dayTimeline.map(item => (
-                      <div key={item.id} style={styles.entry}>
+                      <div
+                        key={item.id}
+                        style={{ ...styles.entry, cursor: 'pointer' }}
+                        onClick={() => {
+                          const targetId = `entry-${item.category}-${item.entry.id}`;
+                          setActiveTab(item.category);
+                          startEdit(item.category, item.entry);
+                          setTimeout(() => {
+                            const el = document.getElementById(targetId);
+                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }, 100);
+                        }}
+                      >
                         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                           <div style={{ fontSize: '20px', minWidth: '28px' }}>{item.icon}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -791,7 +809,7 @@
                 <div>
                   <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Fasting Windows</h3>
                   {todayData.fasting.map(entry => (
-                    <div key={entry.id} style={styles.entry}>
+                    <div key={entry.id} id={`entry-fasting-${entry.id}`} style={styles.entry}>
                       {isEditing('fasting', entry.id) ? (
                         <div>
                           <label style={{ fontSize: '13px', color: '#666' }}>Start</label>
@@ -808,9 +826,10 @@
                             onChange={e => setEditData({ ...editData, end: e.target.value })}
                             style={styles.editInput}
                           />
-                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                             <button onClick={() => saveEdit('fasting')} style={styles.saveButton}>Save</button>
                             <button onClick={cancelEdit} style={styles.cancelButton}>Cancel</button>
+                            <button onClick={() => { deleteEntry('fasting', entry.id); cancelEdit(); }} style={styles.deleteButton}>Delete</button>
                           </div>
                         </div>
                       ) : (
@@ -893,7 +912,7 @@
                 <div>
                   <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '1rem' }}>Today's Supplements</h3>
                   {todayData.supplements.map(entry => (
-                    <div key={entry.id} style={styles.entry}>
+                    <div key={entry.id} id={`entry-supplements-${entry.id}`} style={styles.entry}>
                       {isEditing('supplements', entry.id) ? (
                         <div>
                           <label style={{ fontSize: '13px', color: '#666' }}>Name</label>
@@ -916,9 +935,10 @@
                             onChange={e => setEditData({ ...editData, notes: e.target.value })}
                             style={{ ...styles.editInput, minHeight: '60px' }}
                           />
-                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                             <button onClick={() => saveEdit('supplements')} style={styles.saveButton}>Save</button>
                             <button onClick={cancelEdit} style={styles.cancelButton}>Cancel</button>
+                            <button onClick={() => { deleteEntry('supplements', entry.id); cancelEdit(); }} style={styles.deleteButton}>Delete</button>
                           </div>
                         </div>
                       ) : (
@@ -1099,7 +1119,7 @@
                 <div>
                   <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Symptoms</h3>
                   {todayData.symptoms.map(entry => (
-                    <div key={entry.id} style={styles.entry}>
+                    <div key={entry.id} id={`entry-symptoms-${entry.id}`} style={styles.entry}>
                       {isEditing('symptoms', entry.id) ? (
                         <div>
                           <label style={{ fontSize: '13px', color: '#666' }}>Symptom</label>
@@ -1147,9 +1167,10 @@
                             onChange={e => setEditData({ ...editData, notes: e.target.value })}
                             style={{ ...styles.editInput, minHeight: '60px' }}
                           />
-                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                             <button onClick={() => saveEdit('symptoms')} style={styles.saveButton}>Save</button>
                             <button onClick={cancelEdit} style={styles.cancelButton}>Cancel</button>
+                            <button onClick={() => { deleteEntry('symptoms', entry.id); cancelEdit(); }} style={styles.deleteButton}>Delete</button>
                           </div>
                         </div>
                       ) : (
@@ -1228,7 +1249,7 @@
                 <div>
                   <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Weight</h3>
                   {todayData.weight.map(entry => (
-                    <div key={entry.id} style={styles.entry}>
+                    <div key={entry.id} id={`entry-weight-${entry.id}`} style={styles.entry}>
                       {isEditing('weight', entry.id) ? (
                         <div>
                           <div style={styles.twoColumnForm}>
@@ -1253,9 +1274,10 @@
                               />
                             </div>
                           </div>
-                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                             <button onClick={() => saveEdit('weight')} style={styles.saveButton}>Save</button>
                             <button onClick={cancelEdit} style={styles.cancelButton}>Cancel</button>
+                            <button onClick={() => { deleteEntry('weight', entry.id); cancelEdit(); }} style={styles.deleteButton}>Delete</button>
                           </div>
                         </div>
                       ) : (
@@ -1328,7 +1350,7 @@
                 <div>
                   <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Food</h3>
                   {todayData.food.map(entry => (
-                    <div key={entry.id} style={styles.entry}>
+                    <div key={entry.id} id={`entry-food-${entry.id}`} style={styles.entry}>
                       {isEditing('food', entry.id) ? (
                         <div>
                           <label style={{ fontSize: '13px', color: '#666' }}>What did you eat?</label>
@@ -1344,9 +1366,10 @@
                             onChange={e => setEditData({ ...editData, time: e.target.value })}
                             style={styles.editInput}
                           />
-                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                             <button onClick={() => saveEdit('food')} style={styles.saveButton}>Save</button>
                             <button onClick={cancelEdit} style={styles.cancelButton}>Cancel</button>
+                            <button onClick={() => { deleteEntry('food', entry.id); cancelEdit(); }} style={styles.deleteButton}>Delete</button>
                           </div>
                         </div>
                       ) : (
@@ -1420,7 +1443,7 @@
                 <div>
                   <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Medical Events</h3>
                   {todayData.medical.map(entry => (
-                    <div key={entry.id} style={styles.entry}>
+                    <div key={entry.id} id={`entry-medical-${entry.id}`} style={styles.entry}>
                       {isEditing('medical', entry.id) ? (
                         <div>
                           <label style={{ fontSize: '13px', color: '#666' }}>Medical event</label>
@@ -1436,9 +1459,10 @@
                             onChange={e => setEditData({ ...editData, notes: e.target.value })}
                             style={{ ...styles.editInput, minHeight: '60px' }}
                           />
-                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                             <button onClick={() => saveEdit('medical')} style={styles.saveButton}>Save</button>
                             <button onClick={cancelEdit} style={styles.cancelButton}>Cancel</button>
+                            <button onClick={() => { deleteEntry('medical', entry.id); cancelEdit(); }} style={styles.deleteButton}>Delete</button>
                           </div>
                         </div>
                       ) : (
@@ -1512,7 +1536,7 @@
                 <div>
                   <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Gym Activity</h3>
                   {todayData.gym.map(entry => (
-                    <div key={entry.id} style={styles.entry}>
+                    <div key={entry.id} id={`entry-gym-${entry.id}`} style={styles.entry}>
                       {isEditing('gym', entry.id) ? (
                         <div>
                           <label style={{ fontSize: '13px', color: '#666' }}>Gym activity</label>
@@ -1528,9 +1552,10 @@
                             onChange={e => setEditData({ ...editData, notes: e.target.value })}
                             style={{ ...styles.editInput, minHeight: '60px' }}
                           />
-                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                             <button onClick={() => saveEdit('gym')} style={styles.saveButton}>Save</button>
                             <button onClick={cancelEdit} style={styles.cancelButton}>Cancel</button>
+                            <button onClick={() => { deleteEntry('gym', entry.id); cancelEdit(); }} style={styles.deleteButton}>Delete</button>
                           </div>
                         </div>
                       ) : (
