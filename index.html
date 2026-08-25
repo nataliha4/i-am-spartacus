@@ -289,6 +289,36 @@
       const [confirmingSuppId, setConfirmingSuppId] = useState(null);
       const [confirmTime, setConfirmTime] = useState('');
 
+      const [editingRecurringId, setEditingRecurringId] = useState(null);
+      const [editRecurringData, setEditRecurringData] = useState({});
+
+      const startEditRecurring = (supp) => {
+        setEditingRecurringId(supp.id);
+        setEditRecurringData({ ...supp });
+      };
+
+      const cancelEditRecurring = () => {
+        setEditingRecurringId(null);
+        setEditRecurringData({});
+      };
+
+      const saveEditRecurring = () => {
+        setRecurringSupps(prev => ({
+          ...prev,
+          [editingRecurringId]: { ...prev[editingRecurringId], name: editRecurringData.name, time: editRecurringData.time },
+        }));
+        cancelEditRecurring();
+      };
+
+      const deleteRecurring = (id) => {
+        setRecurringSupps(prev => {
+          const newSupps = { ...prev };
+          delete newSupps[id];
+          return newSupps;
+        });
+        if (editingRecurringId === id) cancelEditRecurring();
+      };
+
       const markDueDone = (type, supp) => {
         const key = `${type}-${supp.id}`;
         const timestamp = new Date().toLocaleTimeString('en-US', {
@@ -1129,7 +1159,7 @@
               )}
 
               <div style={styles.card}>
-                <div style={styles.cardTitle}>📋 Set Up Daily Reminders</div>
+                <div style={styles.cardTitle}>🔁 Add Recurring Supplement</div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Supplement name</label>
                   <input
@@ -1165,36 +1195,79 @@
                   }}
                   style={styles.button}
                 >
-                  Add Daily Reminder
+                  Add Recurring Supplement
                 </button>
               </div>
 
               {Object.keys(recurringSupps).length > 0 && (
                 <div style={styles.card}>
-                  <div style={styles.cardTitle}>⏰ Your Daily Supplements</div>
-                  {Object.values(recurringSupps).map(supp => (
-                    <div key={supp.id} style={styles.entry}>
-                      <strong style={{ fontSize: '18px' }}>{supp.name}</strong>
-                      <div style={{ marginTop: '0.5rem', fontSize: '16px', color: '#666' }}>
-                        Reminder at {formatTime12h(supp.time)}
-                      </div>
-                      <button
-                        onClick={() => {
-                          setRecurringSupps(prev => {
-                            const newSupps = { ...prev };
-                            delete newSupps[supp.id];
-                            return newSupps;
-                          });
-                        }}
-                        style={{
-                          ...styles.deleteButton,
-                          marginTop: '0.75rem',
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  ))}
+                  <div style={styles.cardTitle}>🔁 Recurring Supplements</div>
+                  {Object.values(recurringSupps)
+                    .slice()
+                    .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+                    .map(supp => {
+                      const isEditingThis = editingRecurringId === supp.id;
+
+                      if (isEditingThis) {
+                        return (
+                          <div
+                            key={supp.id}
+                            style={{
+                              padding: '1rem 1.25rem',
+                              backgroundColor: '#fff',
+                              border: '2px solid #333',
+                              borderRadius: '8px',
+                              marginBottom: '0.75rem',
+                            }}
+                          >
+                            <label style={{ fontSize: '13px', color: '#666' }}>Supplement name</label>
+                            <input
+                              type="text"
+                              value={editRecurringData.name}
+                              onChange={e => setEditRecurringData({ ...editRecurringData, name: e.target.value })}
+                              style={styles.editInput}
+                            />
+                            <label style={{ fontSize: '13px', color: '#666' }}>Time to remind me</label>
+                            <input
+                              type="time"
+                              value={editRecurringData.time}
+                              onChange={e => setEditRecurringData({ ...editRecurringData, time: e.target.value })}
+                              style={styles.editInput}
+                            />
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                              <button onClick={saveEditRecurring} style={styles.saveButton}>Save</button>
+                              <button onClick={cancelEditRecurring} style={styles.cancelButton}>Cancel</button>
+                              <button onClick={() => deleteRecurring(supp.id)} style={styles.deleteButton}>Delete</button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={supp.id}
+                          onClick={() => startEditRecurring(supp)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '1rem 1.25rem',
+                            backgroundColor: '#fff',
+                            border: '2px solid #e0e0e0',
+                            borderRadius: '8px',
+                            marginBottom: '0.75rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0, fontWeight: '600', fontSize: '17px', color: '#333' }}>
+                            {supp.name}
+                          </div>
+                          <div style={{ fontSize: '15px', color: '#666', fontWeight: '600', flexShrink: 0 }}>
+                            Daily at {formatTime12h(supp.time)}
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               )}
             </div>
