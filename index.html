@@ -926,11 +926,17 @@
                   </div>
 
                   {fastingStatus && (
-                    <div style={{ marginBottom: '1rem' }}>
-                      <strong style={{ fontSize: '17px' }}>Fasting:</strong> {fastingStatus.hours}h ({formatTime12h(fastingStatus.start)} – {formatTime12h(fastingStatus.end)})
-                      <div style={{ color: fastingStatus.hours >= 16 ? '#27ae60' : '#f39c12', fontSize: '15px', marginTop: '0.3rem', fontWeight: '600' }}>
-                        {fastingStatus.hours >= 16 ? '✓ Goal met!' : `${(16 - fastingStatus.hours).toFixed(1)}h to goal`}
-                      </div>
+                    <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span>
+                        <strong style={{ fontSize: '17px' }}>Fasting:</strong> {fastingStatus.hours}h ({formatTime12h(fastingStatus.start)} – {formatTime12h(fastingStatus.end)})
+                      </span>
+                      {fastingStatus.hours >= 16 ? (
+                        <span style={{ fontSize: '18px' }}>✅</span>
+                      ) : (
+                        <span style={{ color: '#f39c12', fontSize: '14px', fontWeight: '600' }}>
+                          · {(16 - fastingStatus.hours).toFixed(1)}h to goal
+                        </span>
+                      )}
                     </div>
                   )}
 
@@ -955,11 +961,9 @@
                     );
                   })()}
 
-                  {(todayData.medical || todayData.gym) && (
+                  {todayData.medical && (
                     <div>
-                      <strong style={{ fontSize: '17px' }}>Other entries:</strong>
-                      {todayData.medical && ` Medical: ${todayData.medical.length}·`}
-                      {todayData.gym && ` Gym: ${todayData.gym.length}`}
+                      <strong style={{ fontSize: '17px' }}>Other entries:</strong> Medical: {todayData.medical.length}
                     </div>
                   )}
                 </div>
