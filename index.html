@@ -305,6 +305,11 @@
           },
         }));
         cancelEdit();
+        setActiveTab('dashboard');
+        setTimeout(() => {
+          const el = document.getElementById('day-timeline-card');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
       };
 
       const isEditing = (category, id) => editingCategory === category && editingId === id;
