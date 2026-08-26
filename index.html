@@ -214,6 +214,7 @@
       };
 
       const TARGET_FAST_START_TIME = '16:00'; // 4:00 PM daily target
+      const FASTING_GOAL_HOURS = 16;
 
       const getNextFastPrediction = () => {
         const [targetH, targetM] = TARGET_FAST_START_TIME.split(':').map(Number);
@@ -225,6 +226,17 @@
         const hoursUntil = Math.round(diffMin / 60);
 
         return { time: TARGET_FAST_START_TIME, hoursUntil };
+      };
+
+      const getFastTargetEnd = (startTime) => {
+        const [h, m] = startTime.split(':').map(Number);
+        const totalMin = h * 60 + m + FASTING_GOAL_HOURS * 60;
+        const targetMin = totalMin % 1440;
+        const nextDay = totalMin >= 1440;
+        const targetH = Math.floor(targetMin / 60);
+        const targetM = targetMin % 60;
+        const time = `${String(targetH).padStart(2, '0')}:${String(targetM).padStart(2, '0')}`;
+        return { time, nextDay };
       };
 
       const formatTime12h = (time24) => {
@@ -685,12 +697,13 @@
         });
 
         (todayData.fasting || []).forEach(entry => {
+          const target = entry.start ? getFastTargetEnd(entry.start) : null;
           items.push({
             id: 'fast-start-' + entry.id,
             time: entry.start || null,
             icon: '⏳',
             label: '✅ Fast started',
-            detail: '',
+            detail: target ? `until ${formatTime12h(target.time)}${target.nextDay ? ' tomorrow' : ''}` : '',
             category: 'fasting',
             entry: entry,
             milestone: true,
@@ -708,12 +721,13 @@
 
         // Show "Fast started" for a fast that's currently in progress (not yet stopped)
         if (activeFast && activeFast.startDateKey === dateKey) {
+          const target = activeFast.startTime ? getFastTargetEnd(activeFast.startTime) : null;
           items.push({
             id: 'fast-active-start',
             time: activeFast.startTime || null,
             icon: '⏳',
             label: '✅ Fast started',
-            detail: '',
+            detail: target ? `until ${formatTime12h(target.time)}${target.nextDay ? ' tomorrow' : ''}` : '',
             category: null,
             entry: null,
             milestone: true,
@@ -1092,11 +1106,11 @@
                           <span>
                             <strong style={{ fontSize: '17px' }}>Fasted:</strong> {fastingStatus.hours}h ({formatTime12h(fastingStatus.start)} – {formatTime12h(fastingStatus.end)})
                           </span>
-                          {fastingStatus.hours >= 16 ? (
+                          {fastingStatus.hours >= FASTING_GOAL_HOURS ? (
                             <span style={{ fontSize: '18px' }}>✅</span>
                           ) : (
                             <span style={{ color: '#f39c12', fontSize: '14px', fontWeight: '600' }}>
-                              · {(16 - fastingStatus.hours).toFixed(1)}h to goal
+                              · {(FASTING_GOAL_HOURS - fastingStatus.hours).toFixed(1)}h to goal
                             </span>
                           )}
                         </div>
