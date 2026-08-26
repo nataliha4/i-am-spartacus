@@ -69,6 +69,7 @@
         medicalNotes: '',
         gymActivity: '',
         gymNotes: '',
+        gymTime: '',
         recurringName: '',
         recurringTime: '',
         recurringFrequency: 'daily',
@@ -254,6 +255,7 @@
           medicalNotes: '',
           gymActivity: '',
           gymNotes: '',
+          gymTime: '',
           recurringName: '',
           recurringTime: '',
           recurringFrequency: 'daily',
@@ -502,6 +504,18 @@
             label: entry.note,
             detail: '',
             category: 'food',
+            entry: entry,
+          });
+        });
+
+        (todayData.gym || []).forEach(entry => {
+          items.push({
+            id: 'gym-' + entry.id,
+            time: entry.time && entry.time !== 'No time set' ? entry.time : null,
+            icon: '🏋️‍♀️',
+            label: entry.activity,
+            detail: entry.notes || '',
+            category: 'gym',
             entry: entry,
           });
         });
@@ -1931,6 +1945,15 @@
                   />
                 </div>
                 <div style={styles.formGroup}>
+                  <label style={styles.label}>Time (optional)</label>
+                  <input
+                    type="time"
+                    value={formData.gymTime}
+                    onChange={e => setFormData({ ...formData, gymTime: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <div style={styles.formGroup}>
                   <label style={styles.label}>Notes (optional)</label>
                   <textarea
                     placeholder="e.g., 60 min, felt strong"
@@ -1945,6 +1968,7 @@
                       addEntry('gym', {
                         activity: formData.gymActivity,
                         notes: formData.gymNotes,
+                        time: formData.gymTime || getCurrentTimeHHMM(),
                       });
                     }
                   }}
@@ -1968,6 +1992,13 @@
                             onChange={e => setEditData({ ...editData, activity: e.target.value })}
                             style={styles.editInput}
                           />
+                          <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
+                          <input
+                            type="time"
+                            value={editData.time || ''}
+                            onChange={e => setEditData({ ...editData, time: e.target.value })}
+                            style={styles.editInput}
+                          />
                           <label style={{ fontSize: '13px', color: '#666' }}>Notes</label>
                           <textarea
                             value={editData.notes || ''}
@@ -1983,6 +2014,7 @@
                       ) : (
                         <>
                           <strong>{entry.activity}</strong>
+                          {entry.time && <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#999' }}>at {formatTime12h(entry.time)}</div>}
                           {entry.notes && <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#666' }}>{entry.notes}</div>}
                           <div style={styles.entryMeta}>
                             Logged: {entry.timestamp}
