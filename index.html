@@ -396,6 +396,37 @@
         return { logged: dueSupps, recurring: dueRecurring };
       };
 
+      const isRecurringFailed = (key) => {
+        const failed = todayData.failedRecurring || [];
+        return failed.includes(key);
+      };
+
+      const markRecurringFailed = (key) => {
+        setEntries(prev => {
+          const prevDay = prev[dateKey] || {};
+          return {
+            ...prev,
+            [dateKey]: {
+              ...prevDay,
+              failedRecurring: [...(prevDay.failedRecurring || []), key],
+            },
+          };
+        });
+      };
+
+      const clearRecurringFailed = (key) => {
+        setEntries(prev => {
+          const prevDay = prev[dateKey] || {};
+          return {
+            ...prev,
+            [dateKey]: {
+              ...prevDay,
+              failedRecurring: (prevDay.failedRecurring || []).filter(k => k !== key),
+            },
+          };
+        });
+      };
+
       const isRecurringDone = (supp) => {
         const dismissed = todayData.dueDismissed || [];
         return dismissed.includes(`recurring-${supp.id}`);
@@ -439,6 +470,8 @@
 
       const [confirmingSuppId, setConfirmingSuppId] = useState(null);
       const [confirmTime, setConfirmTime] = useState('');
+      const [confirmingUncheckSuppId, setConfirmingUncheckSuppId] = useState(null);
+      const [confirmingUncheckGymId, setConfirmingUncheckGymId] = useState(null);
 
       const [editingRecurringId, setEditingRecurringId] = useState(null);
       const [editRecurringData, setEditRecurringData] = useState({});
@@ -1128,6 +1161,8 @@
                       .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
                       .map(supp => {
                         const done = isRecurringDone(supp);
+                        const failedKey = `recurring-${supp.id}`;
+                        const failed = isRecurringFailed(failedKey);
                         const isConfirming = confirmingSuppId === supp.id;
 
                         if (isConfirming) {
@@ -1152,7 +1187,7 @@
                                 onChange={e => setConfirmTime(e.target.value)}
                                 style={styles.editInput}
                               />
-                              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                 <button
                                   onClick={() => {
                                     confirmRecurringDone(supp, confirmTime);
@@ -1165,6 +1200,98 @@
                                 <button onClick={() => setConfirmingSuppId(null)} style={styles.cancelButton}>
                                   Cancel
                                 </button>
+                                <span
+                                  onClick={() => {
+                                    markRecurringFailed(failedKey);
+                                    setConfirmingSuppId(null);
+                                  }}
+                                  style={{ color: '#e74c3c', fontWeight: '700', fontSize: '15px', cursor: 'pointer', marginLeft: 'auto' }}
+                                >
+                                  Mark as Failed
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (confirmingUncheckSuppId === supp.id) {
+                          return (
+                            <div
+                              key={supp.id}
+                              style={{
+                                padding: '1rem 1.25rem',
+                                backgroundColor: '#fff',
+                                border: '2px solid #e74c3c',
+                                borderRadius: '8px',
+                                marginBottom: '0.75rem',
+                              }}
+                            >
+                              <div style={{ fontWeight: '600', fontSize: '17px', marginBottom: '0.5rem' }}>
+                                Unmark {supp.name}?
+                              </div>
+                              <div style={{ fontSize: '14px', color: '#666', marginBottom: '0.75rem' }}>
+                                This won't remove it from your Day Timeline log — you can delete that entry separately if needed.
+                              </div>
+                              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <button
+                                  onClick={() => {
+                                    uncheckRecurring(supp);
+                                    setConfirmingUncheckSuppId(null);
+                                  }}
+                                  style={styles.deleteButton}
+                                >
+                                  Yes, Unmark
+                                </button>
+                                <button onClick={() => setConfirmingUncheckSuppId(null)} style={styles.cancelButton}>
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (failed) {
+                          return (
+                            <div
+                              key={supp.id}
+                              onClick={() => clearRecurringFailed(failedKey)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.75rem',
+                                padding: '1rem 1.25rem',
+                                backgroundColor: '#fdecea',
+                                border: '2px solid #e74c3c',
+                                borderRadius: '8px',
+                                marginBottom: '0.75rem',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: '28px',
+                                  height: '28px',
+                                  minWidth: '28px',
+                                  borderRadius: '50%',
+                                  border: '2px solid #e74c3c',
+                                  backgroundColor: '#e74c3c',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: '#fff',
+                                  fontSize: '16px',
+                                  fontWeight: '700',
+                                }}
+                              >
+                                ✕
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: '600', fontSize: '17px', color: '#c0392b', textDecoration: 'line-through' }}>
+                                  {supp.name}
+                                </div>
+                              </div>
+                              <div style={{ fontSize: '15px', color: '#c0392b', fontWeight: '600', flexShrink: 0 }}>
+                                Failed
                               </div>
                             </div>
                           );
@@ -1175,7 +1302,7 @@
                             key={supp.id}
                             onClick={() => {
                               if (done) {
-                                uncheckRecurring(supp);
+                                setConfirmingUncheckSuppId(supp.id);
                               } else {
                                 setConfirmingSuppId(supp.id);
                                 setConfirmTime(getCurrentTimeHHMM());
@@ -1243,6 +1370,8 @@
                       .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
                       .map(item => {
                         const done = isRecurringGymDone(item);
+                        const failedKey = `recurring-gym-${item.id}`;
+                        const failed = isRecurringFailed(failedKey);
                         const isConfirming = confirmingGymId === item.id;
 
                         if (isConfirming) {
@@ -1267,7 +1396,7 @@
                                 onChange={e => setConfirmGymTime(e.target.value)}
                                 style={styles.editInput}
                               />
-                              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                 <button
                                   onClick={() => {
                                     confirmRecurringGymDone(item, confirmGymTime);
@@ -1280,6 +1409,98 @@
                                 <button onClick={() => setConfirmingGymId(null)} style={styles.cancelButton}>
                                   Cancel
                                 </button>
+                                <span
+                                  onClick={() => {
+                                    markRecurringFailed(failedKey);
+                                    setConfirmingGymId(null);
+                                  }}
+                                  style={{ color: '#e74c3c', fontWeight: '700', fontSize: '15px', cursor: 'pointer', marginLeft: 'auto' }}
+                                >
+                                  Mark as Failed
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (confirmingUncheckGymId === item.id) {
+                          return (
+                            <div
+                              key={item.id}
+                              style={{
+                                padding: '1rem 1.25rem',
+                                backgroundColor: '#fff',
+                                border: '2px solid #e74c3c',
+                                borderRadius: '8px',
+                                marginBottom: '0.75rem',
+                              }}
+                            >
+                              <div style={{ fontWeight: '600', fontSize: '17px', marginBottom: '0.5rem' }}>
+                                Unmark {item.name}?
+                              </div>
+                              <div style={{ fontSize: '14px', color: '#666', marginBottom: '0.75rem' }}>
+                                This won't remove it from your Day Timeline log — you can delete that entry separately if needed.
+                              </div>
+                              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <button
+                                  onClick={() => {
+                                    uncheckRecurringGym(item);
+                                    setConfirmingUncheckGymId(null);
+                                  }}
+                                  style={styles.deleteButton}
+                                >
+                                  Yes, Unmark
+                                </button>
+                                <button onClick={() => setConfirmingUncheckGymId(null)} style={styles.cancelButton}>
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (failed) {
+                          return (
+                            <div
+                              key={item.id}
+                              onClick={() => clearRecurringFailed(failedKey)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.75rem',
+                                padding: '1rem 1.25rem',
+                                backgroundColor: '#fdecea',
+                                border: '2px solid #e74c3c',
+                                borderRadius: '8px',
+                                marginBottom: '0.75rem',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: '28px',
+                                  height: '28px',
+                                  minWidth: '28px',
+                                  borderRadius: '50%',
+                                  border: '2px solid #e74c3c',
+                                  backgroundColor: '#e74c3c',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: '#fff',
+                                  fontSize: '16px',
+                                  fontWeight: '700',
+                                }}
+                              >
+                                ✕
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: '600', fontSize: '17px', color: '#c0392b', textDecoration: 'line-through' }}>
+                                  {item.name}
+                                </div>
+                              </div>
+                              <div style={{ fontSize: '15px', color: '#c0392b', fontWeight: '600', flexShrink: 0 }}>
+                                Failed
                               </div>
                             </div>
                           );
@@ -1290,7 +1511,7 @@
                             key={item.id}
                             onClick={() => {
                               if (done) {
-                                uncheckRecurringGym(item);
+                                setConfirmingUncheckGymId(item.id);
                               } else {
                                 setConfirmingGymId(item.id);
                                 setConfirmGymTime(getCurrentTimeHHMM());
