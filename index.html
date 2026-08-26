@@ -171,13 +171,13 @@
           minute: '2-digit',
           hour12: true,
         });
-        const startKey = activeFast.startDateKey;
+        const endKey = formatDateLocal(new Date());
         setEntries(prev => {
-          const prevDay = prev[startKey] || {};
+          const prevDay = prev[endKey] || {};
           const prevFasting = Array.isArray(prevDay.fasting) ? prevDay.fasting : [];
           return {
             ...prev,
-            [startKey]: {
+            [endKey]: {
               ...prevDay,
               fasting: [...prevFasting, { start: activeFast.startTime, end: endTime, timestamp, id: Date.now() }],
             },
@@ -328,9 +328,10 @@
 
         const start = new Date(`${currentDate}T${fast.start}`);
         const end = new Date(`${currentDate}T${fast.end}`);
-        if (end < start) end.setDate(end.getDate() + 1);
+        let hours = (end - start) / (1000 * 60 * 60);
+        // Handle overnight fasts regardless of which day the entry is filed under
+        while (hours < 0) hours += 24;
 
-        const hours = (end - start) / (1000 * 60 * 60);
         return { hours: Math.round(hours * 10) / 10, start: fast.start, end: fast.end };
       };
 
