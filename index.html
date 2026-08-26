@@ -262,6 +262,10 @@
           recurringDayOfWeek: '1',
         });
         setActiveTab('dashboard');
+        setTimeout(() => {
+          const el = document.getElementById('day-timeline-card');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
       };
 
       const deleteEntry = (category, id) => {
@@ -951,7 +955,7 @@
               </div>
 
               {dayTimeline.length > 0 && (
-                <div style={styles.card}>
+                <div id="day-timeline-card" style={styles.card}>
                   <div style={styles.cardTitle}>🕐 Day Timeline</div>
                   <div>
                     {dayTimeline.map(item => (
