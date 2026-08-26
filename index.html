@@ -332,6 +332,7 @@
       };
 
       const [editingId, setEditingId] = useState(null);
+      const [timelineEditingKey, setTimelineEditingKey] = useState(null);
       const [editingCategory, setEditingCategory] = useState(null);
       const [editData, setEditData] = useState({});
 
@@ -1167,7 +1168,188 @@
                 <div id="day-timeline-card" style={styles.card}>
                   <div style={styles.cardTitle}>🕐 Day Timeline</div>
                   <div>
-                    {dayTimeline.map(item => (
+                    {dayTimeline.map(item => {
+                      const editingThis = timelineEditingKey === item.id;
+
+                      if (editingThis) {
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              padding: '1rem 1.25rem',
+                              backgroundColor: '#fff',
+                              border: '2px solid #333',
+                              borderRadius: '8px',
+                              marginBottom: '0.75rem',
+                            }}
+                          >
+                            {item.category === 'supplements' && (
+                              <>
+                                <label style={{ fontSize: '13px', color: '#666' }}>Name</label>
+                                <input
+                                  type="text"
+                                  value={editData.name}
+                                  onChange={e => setEditData({ ...editData, name: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
+                                <input
+                                  type="time"
+                                  value={editData.time}
+                                  onChange={e => setEditData({ ...editData, time: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>Notes</label>
+                                <textarea
+                                  value={editData.notes || ''}
+                                  onChange={e => setEditData({ ...editData, notes: e.target.value })}
+                                  style={{ ...styles.editInput, minHeight: '60px' }}
+                                />
+                              </>
+                            )}
+                            {item.category === 'symptoms' && (
+                              <>
+                                <label style={{ fontSize: '13px', color: '#666' }}>Symptom</label>
+                                <input
+                                  type="text"
+                                  value={editData.symptom}
+                                  onChange={e => setEditData({ ...editData, symptom: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>Severity (1-5)</label>
+                                <input
+                                  type="range"
+                                  min="1"
+                                  max="5"
+                                  value={editData.level}
+                                  onChange={e => setEditData({ ...editData, level: parseInt(e.target.value) })}
+                                  style={{ width: '100%', marginBottom: '0.5rem' }}
+                                />
+                                <div style={{ textAlign: 'center', fontSize: '13px', color: '#666', marginBottom: '0.5rem' }}>
+                                  Level: {editData.level} / 5
+                                </div>
+                                <div style={styles.twoColumnForm}>
+                                  <div>
+                                    <label style={{ fontSize: '13px', color: '#666' }}>Date</label>
+                                    <input
+                                      type="date"
+                                      value={editData.date}
+                                      onChange={e => setEditData({ ...editData, date: e.target.value })}
+                                      style={styles.editInput}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
+                                    <input
+                                      type="time"
+                                      value={editData.time}
+                                      onChange={e => setEditData({ ...editData, time: e.target.value })}
+                                      style={styles.editInput}
+                                    />
+                                  </div>
+                                </div>
+                                <label style={{ fontSize: '13px', color: '#666' }}>Notes</label>
+                                <textarea
+                                  value={editData.notes || ''}
+                                  onChange={e => setEditData({ ...editData, notes: e.target.value })}
+                                  style={{ ...styles.editInput, minHeight: '60px' }}
+                                />
+                              </>
+                            )}
+                            {item.category === 'food' && (
+                              <>
+                                <label style={{ fontSize: '13px', color: '#666' }}>What did you eat?</label>
+                                <textarea
+                                  value={editData.note}
+                                  onChange={e => setEditData({ ...editData, note: e.target.value })}
+                                  style={{ ...styles.editInput, minHeight: '60px' }}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
+                                <input
+                                  type="time"
+                                  value={editData.time}
+                                  onChange={e => setEditData({ ...editData, time: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                              </>
+                            )}
+                            {item.category === 'gym' && (
+                              <>
+                                <label style={{ fontSize: '13px', color: '#666' }}>Gym activity</label>
+                                <input
+                                  type="text"
+                                  value={editData.activity}
+                                  onChange={e => setEditData({ ...editData, activity: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
+                                <input
+                                  type="time"
+                                  value={editData.time || ''}
+                                  onChange={e => setEditData({ ...editData, time: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>Notes</label>
+                                <textarea
+                                  value={editData.notes || ''}
+                                  onChange={e => setEditData({ ...editData, notes: e.target.value })}
+                                  style={{ ...styles.editInput, minHeight: '60px' }}
+                                />
+                              </>
+                            )}
+                            {item.category === 'fasting' && (
+                              <>
+                                <label style={{ fontSize: '13px', color: '#666' }}>Start</label>
+                                <input
+                                  type="time"
+                                  value={editData.start}
+                                  onChange={e => setEditData({ ...editData, start: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>End</label>
+                                <input
+                                  type="time"
+                                  value={editData.end}
+                                  onChange={e => setEditData({ ...editData, end: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                              </>
+                            )}
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                              <button
+                                onClick={() => {
+                                  saveEdit(item.category);
+                                  setTimelineEditingKey(null);
+                                }}
+                                style={styles.saveButton}
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => {
+                                  cancelEdit();
+                                  setTimelineEditingKey(null);
+                                }}
+                                style={styles.cancelButton}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => {
+                                  deleteEntry(item.category, item.entry.id);
+                                  cancelEdit();
+                                  setTimelineEditingKey(null);
+                                }}
+                                style={styles.deleteButton}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
                       <div
                         key={item.id}
                         style={{
@@ -1179,13 +1361,8 @@
                         }}
                         onClick={() => {
                           if (!item.category || !item.entry) return;
-                          const targetId = `entry-${item.category}-${item.entry.id}`;
-                          setActiveTab(item.category);
                           startEdit(item.category, item.entry);
-                          setTimeout(() => {
-                            const el = document.getElementById(targetId);
-                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          }, 100);
+                          setTimelineEditingKey(item.id);
                         }}
                       >
                         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
@@ -1203,7 +1380,8 @@
                           </div>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
