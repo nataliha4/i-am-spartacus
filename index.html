@@ -276,6 +276,11 @@
             [category]: prev[dateKey][category].filter(item => item.id !== id),
           },
         }));
+        setActiveTab('dashboard');
+        setTimeout(() => {
+          const el = document.getElementById('day-timeline-card');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
       };
 
       const [editingId, setEditingId] = useState(null);
