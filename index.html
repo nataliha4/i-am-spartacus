@@ -684,6 +684,40 @@
           });
         });
 
+        (todayData.fasting || []).forEach(entry => {
+          items.push({
+            id: 'fast-start-' + entry.id,
+            time: entry.start || null,
+            icon: '⏳',
+            label: 'Fast started',
+            detail: '',
+            category: 'fasting',
+            entry: entry,
+          });
+          items.push({
+            id: 'fast-end-' + entry.id,
+            time: entry.end || null,
+            icon: '⏳',
+            label: 'Fast ended',
+            detail: '',
+            category: 'fasting',
+            entry: entry,
+          });
+        });
+
+        // Show "Fast started" for a fast that's currently in progress (not yet stopped)
+        if (activeFast && activeFast.startDateKey === dateKey) {
+          items.push({
+            id: 'fast-active-start',
+            time: activeFast.startTime || null,
+            icon: '⏳',
+            label: 'Fast started',
+            detail: '',
+            category: null,
+            entry: null,
+          });
+        }
+
         // Sort by time (entries without a time go to the end)
         items.sort((a, b) => {
           if (!a.time && !b.time) return 0;
@@ -1120,8 +1154,9 @@
                     {dayTimeline.map(item => (
                       <div
                         key={item.id}
-                        style={{ ...styles.entry, cursor: 'pointer' }}
+                        style={{ ...styles.entry, cursor: item.category && item.entry ? 'pointer' : 'default' }}
                         onClick={() => {
+                          if (!item.category || !item.entry) return;
                           const targetId = `entry-${item.category}-${item.entry.id}`;
                           setActiveTab(item.category);
                           startEdit(item.category, item.entry);
