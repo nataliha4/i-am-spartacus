@@ -689,10 +689,11 @@
             id: 'fast-start-' + entry.id,
             time: entry.start || null,
             icon: '⏳',
-            label: 'Fast started',
+            label: '✅ Fast started',
             detail: '',
             category: 'fasting',
             entry: entry,
+            milestone: true,
           });
           items.push({
             id: 'fast-end-' + entry.id,
@@ -711,10 +712,11 @@
             id: 'fast-active-start',
             time: activeFast.startTime || null,
             icon: '⏳',
-            label: 'Fast started',
+            label: '✅ Fast started',
             detail: '',
             category: null,
             entry: null,
+            milestone: true,
           });
         }
 
@@ -1154,7 +1156,13 @@
                     {dayTimeline.map(item => (
                       <div
                         key={item.id}
-                        style={{ ...styles.entry, cursor: item.category && item.entry ? 'pointer' : 'default' }}
+                        style={{
+                          ...styles.entry,
+                          cursor: item.category && item.entry ? 'pointer' : 'default',
+                          ...(item.milestone
+                            ? { backgroundColor: '#eafaf1', border: '2px solid #27ae60' }
+                            : {}),
+                        }}
                         onClick={() => {
                           if (!item.category || !item.entry) return;
                           const targetId = `entry-${item.category}-${item.entry.id}`;
@@ -1170,8 +1178,8 @@
                           <div style={{ fontSize: '20px', minWidth: '28px' }}>{item.icon}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
-                              <strong style={{ flex: 1, minWidth: 0 }}>{item.label}</strong>
-                              <span style={{ color: '#666', fontWeight: '600', fontSize: '16px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              <strong style={{ flex: 1, minWidth: 0, color: item.milestone ? '#1e7e4f' : 'inherit' }}>{item.label}</strong>
+                              <span style={{ color: item.milestone ? '#1e7e4f' : '#666', fontWeight: '600', fontSize: '16px', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                 {formatTime12h(item.time)}
                               </span>
                             </div>
