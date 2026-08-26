@@ -1,7 +1,7 @@
 {
-  "name": "daily-tracker-app",
+  "name": "i-am-spartacus",
   "version": "1.0.0",
-  "description": "A simple personal health and wellness tracking app",
+  "description": "My Daily Tracker for Health and Activity — a simple personal health and wellness tracking app",
   "main": "index.html",
   "scripts": {
     "start": "python -m http.server 3000",

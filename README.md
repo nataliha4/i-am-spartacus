@@ -1,43 +1,42 @@
-# I AM SPARTACUS | Daily Tracker App
+# 💪 I AM SPARTACUS — My Daily Tracker for Health and Activity
 
-A simple, lightweight web app to track your daily health and wellness — fasting, supplements, symptoms, weight, food, medical events, and gym activity.
+A simple, lightweight web app to track daily health and wellness — fasting, supplements, symptoms, weight, food, medical events, and gym activity. Built as a single static page, no backend, no build tools.
+
+**Live app:** https://nataliha4.github.io/i-am-spartacus/
 
 ## Features
 
-✅ **Fasting Tracker** — Log 16-hour fasting windows, see progress toward your goal  
-✅ **Supplements** — Track supplements with times and notes  
-✅ **Symptoms** — Log symptoms with severity levels (1-5)  
-✅ **Weight** — Track weight and target weight  
-✅ **Food** — Simple timestamped notes of what you eat  
-✅ **Medical Events** — Doctor visits, blood tests, etc.  
-✅ **Gym Activity** — Log workouts at your gym  
-✅ **Dashboard** — See today's summary at a glance  
-✅ **Date Navigation** — Review past days or plan ahead  
-✅ **Local Storage** — All data stays on your device (no cloud yet)  
+- **⏳ Fasting** — One-tap Start Fast / Stop Fast on the Dashboard, with a live elapsed-time counter that survives app restarts and overnight fasts. Manual fasting window entry also available.
+- **🤒 Symptoms** — Log symptoms with severity (1–5), date, time, and notes
+- **🍎 Food** — Quick timestamped notes of what you ate
+- **💊 Supplements** — Log ad-hoc supplement intake, plus set up **Recurring Supplements** (Daily or Weekly on a specific day) with a persistent daily checklist on the Dashboard
+- **🎯 Weight** — Track weight against a target, with the difference shown automatically
+- **🏋️‍♀️ Gym** — Log workouts with time and notes
+- **⛑️ Medical** — Doctor visits, blood tests, and other medical events
+- **📊 Dashboard** — Today's Summary, a persistent Supplements checklist, and a unified **Day Timeline** showing Supplements, Symptoms, Food, and Gym entries sorted chronologically
+- **✏️ Edit & Delete** — Every entry type supports inline editing and deletion
+- **📅 Date Navigation** — Review past days or plan ahead
+- **💾 Local Storage** — All data stays on your device; nothing is sent anywhere
 
 ## No Installation Required
 
-This is a **static web app** — no build tools, no servers, no complex setup needed.
+This is a **static web app** — no build tools, no servers, no accounts beyond GitHub.
 
-Just open `index.html` in your browser, or deploy it to Netlify (see `DEPLOYMENT_GUIDE.md`).
+Just open `index.html` in a browser, or visit the live GitHub Pages URL above.
 
-## How to Deploy
+## How to Deploy Changes
 
-See **`DEPLOYMENT_GUIDE.md`** for step-by-step instructions to:
-1. Push the code to GitHub (using GitHub's web interface)
-2. Deploy to Netlify (one click)
-3. Access your app on your phone
-
-The whole process takes ~10 minutes.
+See **`DEPLOYMENT_GUIDE.md`** for step-by-step instructions on editing and redeploying via GitHub Pages.
 
 ## File Structure
 
 ```
-daily-tracker-app/
-├── index.html              # The app (open this in a browser)
-├── package.json            # Project metadata (for Netlify)
-├── README.md               # This file
-└── DEPLOYMENT_GUIDE.md     # How to deploy to Netlify
+i-am-spartacus/
+├── index.html              # The entire app (open this in a browser)
+├── .nojekyll                # Required — tells GitHub Pages to skip Jekyll processing
+├── package.json             # Project metadata (no actual build step)
+├── README.md                 # This file
+└── DEPLOYMENT_GUIDE.md       # How to deploy via GitHub Pages
 ```
 
 ## How It Works
@@ -45,21 +44,19 @@ daily-tracker-app/
 - **All code in one HTML file** — React + component code + styles
 - **React from CDN** — no build step needed
 - **localStorage for persistence** — data saved in your browser
-- **Responsive design** — works great on phone, tablet, desktop
+- **Responsive design** — built mobile-first
 
-## For Later (Iteration 2)
+## Possible Future Additions
 
-Once you've used it for a while and decide you like it, we can add:
-- Cloud backup (Firebase, Supabase, or similar)
+- Cloud backup / multi-device sync
 - Export to CSV
-- Analytics and charts
-- Multi-device sync
-- Notifications/reminders
+- Charts and trend analytics over time
+- Browser push notifications for supplement reminders
 
 ## Questions?
 
-Reply to the chat thread if you need help with deployment or want to customize anything.
+Reply in the chat thread if you need help with deployment or want to customize anything.
 
 ---
 
-**Built with React 18 + local storage + Netlify.**
+**Built with React 18 (via CDN) + localStorage + GitHub Pages.**
