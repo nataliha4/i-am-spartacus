@@ -44,6 +44,7 @@
       const [entries, setEntries] = useState({});
       const [recurringSupps, setRecurringSupps] = useState({});
       const [recurringGym, setRecurringGym] = useState({});
+      const [appSettings, setAppSettings] = useState({ targetWeight: '', fastingGoalHours: 16, fastingStartTime: '16:00' });
       const [activeFast, setActiveFast] = useState(null);
       const [nowTick, setNowTick] = useState(0);
       const [currentDate, setCurrentDate] = useState(() => {
@@ -115,6 +116,14 @@
             console.error('Failed to load active fast');
           }
         }
+        const savedSettings = localStorage.getItem('appSettings');
+        if (savedSettings) {
+          try {
+            setAppSettings(JSON.parse(savedSettings));
+          } catch (e) {
+            console.error('Failed to load app settings');
+          }
+        }
       }, []);
 
       // Tick every 30s so the live elapsed-fasting display stays current
@@ -146,6 +155,11 @@
       useEffect(() => {
         localStorage.setItem('recurringGym', JSON.stringify(recurringGym));
       }, [recurringGym]);
+
+      // Save app settings to localStorage
+      useEffect(() => {
+        localStorage.setItem('appSettings', JSON.stringify(appSettings));
+      }, [appSettings]);
 
       const dateKey = currentDate;
 
@@ -213,11 +227,9 @@
         return `${hours}h ${minutes}m`;
       };
 
-      const TARGET_FAST_START_TIME = '16:00'; // 4:00 PM daily target
-      const FASTING_GOAL_HOURS = 16;
-
       const getNextFastPrediction = () => {
-        const [targetH, targetM] = TARGET_FAST_START_TIME.split(':').map(Number);
+        const targetTime = appSettings.fastingStartTime || '16:00';
+        const [targetH, targetM] = targetTime.split(':').map(Number);
         const targetTotalMin = targetH * 60 + targetM;
 
         const now = new Date();
@@ -225,12 +237,13 @@
         const diffMin = (targetTotalMin - nowTotalMin + 1440) % 1440;
         const hoursUntil = Math.round(diffMin / 60);
 
-        return { time: TARGET_FAST_START_TIME, hoursUntil };
+        return { time: targetTime, hoursUntil };
       };
 
       const getFastTargetEnd = (startTime) => {
+        const goalHours = appSettings.fastingGoalHours || 16;
         const [h, m] = startTime.split(':').map(Number);
-        const totalMin = h * 60 + m + FASTING_GOAL_HOURS * 60;
+        const totalMin = h * 60 + m + goalHours * 60;
         const targetMin = totalMin % 1440;
         const nextDay = totalMin >= 1440;
         const targetH = Math.floor(targetMin / 60);
@@ -1120,6 +1133,7 @@
               { key: 'fasting', icon: '⏳', name: 'Fasting' },
               { key: 'weight', icon: '🎯', name: 'Weight' },
               { key: 'medical', icon: '⛑️', name: 'Medical' },
+              { key: 'settings', icon: '⚙️', name: 'Settings' },
             ].map(tab => (
               <div
                 key={tab.key}
@@ -1164,11 +1178,11 @@
                           <span>
                             <strong style={{ fontSize: '17px' }}>Fasted:</strong> {fastingStatus.hours}h ({formatTime12h(fastingStatus.start)} – {formatTime12h(fastingStatus.end)})
                           </span>
-                          {fastingStatus.hours >= FASTING_GOAL_HOURS ? (
+                          {fastingStatus.hours >= (appSettings.fastingGoalHours || 16) ? (
                             <span style={{ fontSize: '18px' }}>✅</span>
                           ) : (
                             <span style={{ color: '#f39c12', fontSize: '14px', fontWeight: '600' }}>
-                              · {(FASTING_GOAL_HOURS - fastingStatus.hours).toFixed(1)}h to goal
+                              · {((appSettings.fastingGoalHours || 16) - fastingStatus.hours).toFixed(1)}h to goal
                             </span>
                           )}
                         </div>
@@ -1769,171 +1783,6 @@
           {/* Supplements Tab */}
           {activeTab === 'supplements' && (
             <div style={styles.content}>
-              {Object.keys(recurringSupps).length > 0 && (
-                <div style={styles.card}>
-                  <div style={styles.cardTitle}>🔁 Recurring Supplements</div>
-                  {Object.values(recurringSupps)
-                    .slice()
-                    .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
-                    .map(supp => {
-                      const isEditingThis = editingRecurringId === supp.id;
-
-                      if (isEditingThis) {
-                        return (
-                          <div
-                            key={supp.id}
-                            style={{
-                              padding: '1rem 1.25rem',
-                              backgroundColor: '#fff',
-                              border: '2px solid #333',
-                              borderRadius: '8px',
-                              marginBottom: '0.75rem',
-                            }}
-                          >
-                            <label style={{ fontSize: '13px', color: '#666' }}>Supplement name</label>
-                            <input
-                              type="text"
-                              value={editRecurringData.name}
-                              onChange={e => setEditRecurringData({ ...editRecurringData, name: e.target.value })}
-                              style={styles.editInput}
-                            />
-                            <label style={{ fontSize: '13px', color: '#666' }}>Frequency</label>
-                            <select
-                              value={editRecurringData.frequency || 'daily'}
-                              onChange={e => setEditRecurringData({ ...editRecurringData, frequency: e.target.value })}
-                              style={styles.editInput}
-                            >
-                              <option value="daily">Daily</option>
-                              <option value="weekly">Weekly</option>
-                            </select>
-                            {editRecurringData.frequency === 'weekly' && (
-                              <>
-                                <label style={{ fontSize: '13px', color: '#666' }}>Day of week</label>
-                                <select
-                                  value={editRecurringData.dayOfWeek ?? '1'}
-                                  onChange={e => setEditRecurringData({ ...editRecurringData, dayOfWeek: e.target.value })}
-                                  style={styles.editInput}
-                                >
-                                  {dayNames.map((day, idx) => (
-                                    <option key={idx} value={idx}>{day}</option>
-                                  ))}
-                                </select>
-                              </>
-                            )}
-                            <label style={{ fontSize: '13px', color: '#666' }}>Time to remind me</label>
-                            <input
-                              type="time"
-                              value={editRecurringData.time}
-                              onChange={e => setEditRecurringData({ ...editRecurringData, time: e.target.value })}
-                              style={styles.editInput}
-                            />
-                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                              <button onClick={saveEditRecurring} style={styles.saveButton}>Save</button>
-                              <button onClick={cancelEditRecurring} style={styles.cancelButton}>Cancel</button>
-                              <button onClick={() => deleteRecurring(supp.id)} style={styles.deleteButton}>Delete</button>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div
-                          key={supp.id}
-                          onClick={() => startEditRecurring(supp)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.75rem',
-                            padding: '1rem 1.25rem',
-                            backgroundColor: '#fff',
-                            border: '2px solid #e0e0e0',
-                            borderRadius: '8px',
-                            marginBottom: '0.75rem',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0, fontWeight: '600', fontSize: '17px', color: '#333' }}>
-                            {supp.name}
-                          </div>
-                          <div style={{ fontSize: '15px', color: '#666', fontWeight: '600', flexShrink: 0 }}>
-                            {supp.frequency === 'weekly'
-                              ? `Weekly (${dayNames[parseInt(supp.dayOfWeek, 10)]}) at ${formatTime12h(supp.time)}`
-                              : `Daily at ${formatTime12h(supp.time)}`}
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
-
-              <div style={styles.card}>
-                <div style={styles.cardTitle}>🔁 Add Recurring Supplement</div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Supplement name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Magnesium"
-                    value={formData.recurringName}
-                    onChange={e => setFormData({ ...formData, recurringName: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Frequency</label>
-                  <select
-                    value={formData.recurringFrequency}
-                    onChange={e => setFormData({ ...formData, recurringFrequency: e.target.value })}
-                    style={styles.select}
-                  >
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                  </select>
-                </div>
-                {formData.recurringFrequency === 'weekly' && (
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>Day of week</label>
-                    <select
-                      value={formData.recurringDayOfWeek}
-                      onChange={e => setFormData({ ...formData, recurringDayOfWeek: e.target.value })}
-                      style={styles.select}
-                    >
-                      {dayNames.map((day, idx) => (
-                        <option key={idx} value={idx}>{day}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Time to remind me</label>
-                  <input
-                    type="time"
-                    value={formData.recurringTime}
-                    onChange={e => setFormData({ ...formData, recurringTime: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <button
-                  onClick={() => {
-                    if (formData.recurringName && formData.recurringTime) {
-                      setRecurringSupps(prev => ({
-                        ...prev,
-                        [Date.now()]: {
-                          id: Date.now(),
-                          name: formData.recurringName,
-                          time: formData.recurringTime,
-                          frequency: formData.recurringFrequency,
-                          dayOfWeek: formData.recurringFrequency === 'weekly' ? formData.recurringDayOfWeek : undefined,
-                        }
-                      }));
-                      setFormData({ ...formData, recurringName: '', recurringTime: '', recurringFrequency: 'daily', recurringDayOfWeek: '1' });
-                    }
-                  }}
-                  style={styles.button}
-                >
-                  Add Recurring Supplement
-                </button>
-              </div>
-
               <div style={styles.card}>
                 <div style={styles.cardTitle}>📝 Log Today's Supplements</div>
                 <div style={styles.formGroup}>
@@ -2208,36 +2057,28 @@
             <div style={styles.content}>
               <div style={styles.card}>
                 <div style={styles.cardTitle}>🎯 Log Weight</div>
-                <div style={styles.twoColumnForm}>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>Weight (kg)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      placeholder="e.g., 75.5"
-                      value={formData.weight}
-                      onChange={e => setFormData({ ...formData, weight: e.target.value })}
-                      style={styles.input}
-                    />
-                  </div>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>Target weight (kg)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      placeholder="e.g., 70"
-                      value={formData.targetWeight}
-                      onChange={e => setFormData({ ...formData, targetWeight: e.target.value })}
-                      style={styles.input}
-                    />
-                  </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Weight (kg)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    placeholder="e.g., 75.5"
+                    value={formData.weight}
+                    onChange={e => setFormData({ ...formData, weight: e.target.value })}
+                    style={styles.input}
+                  />
                 </div>
+                {appSettings.targetWeight && (
+                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '1rem' }}>
+                    Target: {appSettings.targetWeight} kg (set in Settings)
+                  </div>
+                )}
                 <button
                   onClick={() => {
                     if (formData.weight) {
                       addEntry('weight', {
                         weight: formData.weight,
-                        target: formData.targetWeight,
+                        target: appSettings.targetWeight,
                       });
                     }
                   }}
@@ -2495,9 +2336,220 @@
             </div>
           )}
 
-          {/* Gym Tab */}
-          {activeTab === 'gym' && (
+          {/* Settings Tab */}
+          {activeTab === 'settings' && (
             <div style={styles.content}>
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>🎯 Target Weight</div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Target weight (kg)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    placeholder="e.g., 70"
+                    value={appSettings.targetWeight}
+                    onChange={e => setAppSettings({ ...appSettings, targetWeight: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <div style={{ fontSize: '13px', color: '#666' }}>
+                  Used automatically when you log your weight, and shown on the Dashboard.
+                </div>
+              </div>
+
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>⏳ Fasting Goal</div>
+                <div style={styles.twoColumnForm}>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Goal hours</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={appSettings.fastingGoalHours}
+                      onChange={e => setAppSettings({ ...appSettings, fastingGoalHours: parseFloat(e.target.value) || 0 })}
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Daily start time</label>
+                    <input
+                      type="time"
+                      value={appSettings.fastingStartTime}
+                      onChange={e => setAppSettings({ ...appSettings, fastingStartTime: e.target.value })}
+                      style={styles.input}
+                    />
+                  </div>
+                </div>
+                <div style={{ fontSize: '13px', color: '#666' }}>
+                  Goal hours sets when "✅ Goal met" shows. Daily start time drives the "Next fast starts at..." prediction on the Dashboard.
+                </div>
+              </div>
+
+              {Object.keys(recurringSupps).length > 0 && (
+                <div style={styles.card}>
+                  <div style={styles.cardTitle}>🔁 Recurring Supplements</div>
+                  {Object.values(recurringSupps)
+                    .slice()
+                    .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+                    .map(supp => {
+                      const isEditingThis = editingRecurringId === supp.id;
+
+                      if (isEditingThis) {
+                        return (
+                          <div
+                            key={supp.id}
+                            style={{
+                              padding: '1rem 1.25rem',
+                              backgroundColor: '#fff',
+                              border: '2px solid #333',
+                              borderRadius: '8px',
+                              marginBottom: '0.75rem',
+                            }}
+                          >
+                            <label style={{ fontSize: '13px', color: '#666' }}>Supplement name</label>
+                            <input
+                              type="text"
+                              value={editRecurringData.name}
+                              onChange={e => setEditRecurringData({ ...editRecurringData, name: e.target.value })}
+                              style={styles.editInput}
+                            />
+                            <label style={{ fontSize: '13px', color: '#666' }}>Frequency</label>
+                            <select
+                              value={editRecurringData.frequency || 'daily'}
+                              onChange={e => setEditRecurringData({ ...editRecurringData, frequency: e.target.value })}
+                              style={styles.editInput}
+                            >
+                              <option value="daily">Daily</option>
+                              <option value="weekly">Weekly</option>
+                            </select>
+                            {editRecurringData.frequency === 'weekly' && (
+                              <>
+                                <label style={{ fontSize: '13px', color: '#666' }}>Day of week</label>
+                                <select
+                                  value={editRecurringData.dayOfWeek ?? '1'}
+                                  onChange={e => setEditRecurringData({ ...editRecurringData, dayOfWeek: e.target.value })}
+                                  style={styles.editInput}
+                                >
+                                  {dayNames.map((day, idx) => (
+                                    <option key={idx} value={idx}>{day}</option>
+                                  ))}
+                                </select>
+                              </>
+                            )}
+                            <label style={{ fontSize: '13px', color: '#666' }}>Time to remind me</label>
+                            <input
+                              type="time"
+                              value={editRecurringData.time}
+                              onChange={e => setEditRecurringData({ ...editRecurringData, time: e.target.value })}
+                              style={styles.editInput}
+                            />
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                              <button onClick={saveEditRecurring} style={styles.saveButton}>Save</button>
+                              <button onClick={cancelEditRecurring} style={styles.cancelButton}>Cancel</button>
+                              <button onClick={() => deleteRecurring(supp.id)} style={styles.deleteButton}>Delete</button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={supp.id}
+                          onClick={() => startEditRecurring(supp)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '1rem 1.25rem',
+                            backgroundColor: '#fff',
+                            border: '2px solid #e0e0e0',
+                            borderRadius: '8px',
+                            marginBottom: '0.75rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0, fontWeight: '600', fontSize: '17px', color: '#333' }}>
+                            {supp.name}
+                          </div>
+                          <div style={{ fontSize: '15px', color: '#666', fontWeight: '600', flexShrink: 0 }}>
+                            {supp.frequency === 'weekly'
+                              ? `Weekly (${dayNames[parseInt(supp.dayOfWeek, 10)]}) at ${formatTime12h(supp.time)}`
+                              : `Daily at ${formatTime12h(supp.time)}`}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>🔁 Add Recurring Supplement</div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Supplement name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Magnesium"
+                    value={formData.recurringName}
+                    onChange={e => setFormData({ ...formData, recurringName: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Frequency</label>
+                  <select
+                    value={formData.recurringFrequency}
+                    onChange={e => setFormData({ ...formData, recurringFrequency: e.target.value })}
+                    style={styles.select}
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                  </select>
+                </div>
+                {formData.recurringFrequency === 'weekly' && (
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Day of week</label>
+                    <select
+                      value={formData.recurringDayOfWeek}
+                      onChange={e => setFormData({ ...formData, recurringDayOfWeek: e.target.value })}
+                      style={styles.select}
+                    >
+                      {dayNames.map((day, idx) => (
+                        <option key={idx} value={idx}>{day}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Time to remind me</label>
+                  <input
+                    type="time"
+                    value={formData.recurringTime}
+                    onChange={e => setFormData({ ...formData, recurringTime: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    if (formData.recurringName && formData.recurringTime) {
+                      setRecurringSupps(prev => ({
+                        ...prev,
+                        [Date.now()]: {
+                          id: Date.now(),
+                          name: formData.recurringName,
+                          time: formData.recurringTime,
+                          frequency: formData.recurringFrequency,
+                          dayOfWeek: formData.recurringFrequency === 'weekly' ? formData.recurringDayOfWeek : undefined,
+                        }
+                      }));
+                      setFormData({ ...formData, recurringName: '', recurringTime: '', recurringFrequency: 'daily', recurringDayOfWeek: '1' });
+                    }
+                  }}
+                  style={styles.button}
+                >
+                  Add Recurring Supplement
+                </button>
+              </div>
+
               {Object.keys(recurringGym).length > 0 && (
                 <div style={styles.card}>
                   <div style={styles.cardTitle}>🔁 Recurring Gym Activities</div>
@@ -2596,52 +2648,6 @@
               )}
 
               <div style={styles.card}>
-                <div style={styles.cardTitle}>🏋️‍♀️ Log Gym Activity</div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Gym activity</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Planet Fitness — Chest & Triceps"
-                    value={formData.gymActivity}
-                    onChange={e => setFormData({ ...formData, gymActivity: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Time (optional)</label>
-                  <input
-                    type="time"
-                    value={formData.gymTime}
-                    onChange={e => setFormData({ ...formData, gymTime: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Notes (optional)</label>
-                  <textarea
-                    placeholder="e.g., 60 min, felt strong"
-                    value={formData.gymNotes}
-                    onChange={e => setFormData({ ...formData, gymNotes: e.target.value })}
-                    style={styles.textarea}
-                  />
-                </div>
-                <button
-                  onClick={() => {
-                    if (formData.gymActivity) {
-                      addEntry('gym', {
-                        activity: formData.gymActivity,
-                        notes: formData.gymNotes,
-                        time: formData.gymTime || getCurrentTimeHHMM(),
-                      });
-                    }
-                  }}
-                  style={styles.button}
-                >
-                  Log Gym Activity
-                </button>
-              </div>
-
-              <div style={styles.card}>
                 <div style={styles.cardTitle}>🔁 Add Recurring Gym Activity</div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Activity name</label>
@@ -2706,6 +2712,57 @@
                   style={styles.button}
                 >
                   Add Recurring Gym Activity
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Gym Tab */}
+          {activeTab === 'gym' && (
+            <div style={styles.content}>
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>🏋️‍♀️ Log Gym Activity</div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Gym activity</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Planet Fitness — Chest & Triceps"
+                    value={formData.gymActivity}
+                    onChange={e => setFormData({ ...formData, gymActivity: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Time (optional)</label>
+                  <input
+                    type="time"
+                    value={formData.gymTime}
+                    onChange={e => setFormData({ ...formData, gymTime: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Notes (optional)</label>
+                  <textarea
+                    placeholder="e.g., 60 min, felt strong"
+                    value={formData.gymNotes}
+                    onChange={e => setFormData({ ...formData, gymNotes: e.target.value })}
+                    style={styles.textarea}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    if (formData.gymActivity) {
+                      addEntry('gym', {
+                        activity: formData.gymActivity,
+                        notes: formData.gymNotes,
+                        time: formData.gymTime || getCurrentTimeHHMM(),
+                      });
+                    }
+                  }}
+                  style={styles.button}
+                >
+                  Log Gym Activity
                 </button>
               </div>
 
