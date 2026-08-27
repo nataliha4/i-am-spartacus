@@ -698,27 +698,87 @@
         });
 
         (todayData.fasting || []).forEach(entry => {
+          let crossesMidnight = false;
           let durationLabel = '';
           if (entry.start && entry.end) {
             const [sh, sm] = entry.start.split(':').map(Number);
             const [eh, em] = entry.end.split(':').map(Number);
-            let diffH = ((eh * 60 + em) - (sh * 60 + sm) + 1440) % 1440 / 60;
+            const sMin = sh * 60 + sm;
+            const eMin = eh * 60 + em;
+            crossesMidnight = sMin > eMin;
+            const diffH = (eMin - sMin + 1440) % 1440 / 60;
             durationLabel = ` · ${diffH.toFixed(1)}h total`;
           }
-          items.push({
-            id: 'fast-end-' + entry.id,
-            time: entry.end || null,
-            icon: '⏳',
-            label: 'Fast ended',
-            detail: entry.start ? `Started ${formatTime12h(entry.start)}${durationLabel}` : '',
-            category: 'fasting',
-            entry: entry,
-          });
+
+          if (crossesMidnight) {
+            // Started the previous day — only "Fast ended" belongs on this day's timeline.
+            // The start info is folded into this entry's detail, and also shown as a
+            // read-only preview on the previous day (see the "peek at tomorrow" block below).
+            items.push({
+              id: 'fast-end-' + entry.id,
+              time: entry.end || null,
+              icon: '⏳',
+              label: 'Fast ended',
+              detail: entry.start ? `Started ${formatTime12h(entry.start)}${durationLabel}` : '',
+              category: 'fasting',
+              entry: entry,
+            });
+          } else {
+            // Same-day fast — both started and ended genuinely happened today, so show both, editable.
+            const target = entry.start ? getFastTargetEnd(entry.start) : null;
+            items.push({
+              id: 'fast-start-' + entry.id,
+              time: entry.start || null,
+              icon: '⏳',
+              label: '✅ Fast started',
+              detail: target ? `until ${formatTime12h(target.time)}${target.nextDay ? ' tomorrow' : ''}` : '',
+              category: 'fasting',
+              entry: entry,
+              milestone: true,
+            });
+            items.push({
+              id: 'fast-end-' + entry.id,
+              time: entry.end || null,
+              icon: '⏳',
+              label: 'Fast ended',
+              detail: durationLabel ? durationLabel.replace(' · ', '') : '',
+              category: 'fasting',
+              entry: entry,
+            });
+          }
         });
 
+        // Peek at tomorrow's stored fasting entries: if one crosses midnight, it actually
+        // started on the day being viewed right now — show a read-only preview here.
+        // (The entry itself lives under tomorrow's date, so it isn't editable from here;
+        // edit it from tomorrow's "Fast ended" row instead.)
+        {
+          const nextDate = parseLocalDate(dateKey);
+          nextDate.setDate(nextDate.getDate() + 1);
+          const nextDateKey = formatDateLocal(nextDate);
+          const nextDayFasting = (entries[nextDateKey] && entries[nextDateKey].fasting) || [];
+          nextDayFasting.forEach(entry => {
+            if (!entry.start || !entry.end) return;
+            const [sh, sm] = entry.start.split(':').map(Number);
+            const [eh, em] = entry.end.split(':').map(Number);
+            const crossesMidnight = (sh * 60 + sm) > (eh * 60 + em);
+            if (!crossesMidnight) return;
+            const target = getFastTargetEnd(entry.start);
+            items.push({
+              id: 'fast-start-preview-' + entry.id,
+              time: entry.start,
+              icon: '⏳',
+              label: '✅ Fast started',
+              detail: target ? `until ${formatTime12h(target.time)}${target.nextDay ? ' tomorrow' : ''}` : '',
+              category: null,
+              entry: null,
+              milestone: true,
+            });
+          });
+        }
+
         // Show "Fast started" for a fast that's currently in progress (not yet stopped) —
-        // this is the ONLY place a standalone "Fast started" milestone appears, always on
-        // the day it actually began, since completed fasts fold that info into "Fast ended" instead.
+        // always shown on the day it actually began.
         if (activeFast && activeFast.startDateKey === dateKey) {
           const target = activeFast.startTime ? getFastTargetEnd(activeFast.startTime) : null;
           items.push({
