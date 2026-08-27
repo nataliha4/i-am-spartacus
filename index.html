@@ -718,13 +718,14 @@
               id: 'fast-end-' + entry.id,
               time: entry.end || null,
               icon: '⏳',
-              label: 'Fast ended',
+              label: '✅ Fast ended',
               detail: entry.start ? `Started ${formatTime12h(entry.start)}${durationLabel}` : '',
               category: 'fasting',
               entry: entry,
             });
           } else {
             // Same-day fast — both started and ended genuinely happened today, so show both, editable.
+            // No green highlight here — that's reserved for a fast that's currently active.
             const target = entry.start ? getFastTargetEnd(entry.start) : null;
             items.push({
               id: 'fast-start-' + entry.id,
@@ -734,13 +735,12 @@
               detail: target ? `until ${formatTime12h(target.time)}${target.nextDay ? ' tomorrow' : ''}` : '',
               category: 'fasting',
               entry: entry,
-              milestone: true,
             });
             items.push({
               id: 'fast-end-' + entry.id,
               time: entry.end || null,
               icon: '⏳',
-              label: 'Fast ended',
+              label: '✅ Fast ended',
               detail: durationLabel ? durationLabel.replace(' · ', '') : '',
               category: 'fasting',
               entry: entry,
@@ -772,7 +772,6 @@
               detail: target ? `until ${formatTime12h(target.time)}${target.nextDay ? ' tomorrow' : ''}` : '',
               category: null,
               entry: null,
-              milestone: true,
             });
           });
         }
