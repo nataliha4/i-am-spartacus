@@ -698,29 +698,27 @@
         });
 
         (todayData.fasting || []).forEach(entry => {
-          const target = entry.start ? getFastTargetEnd(entry.start) : null;
-          items.push({
-            id: 'fast-start-' + entry.id,
-            time: entry.start || null,
-            icon: '⏳',
-            label: '✅ Fast started',
-            detail: target ? `until ${formatTime12h(target.time)}${target.nextDay ? ' tomorrow' : ''}` : '',
-            category: 'fasting',
-            entry: entry,
-            milestone: true,
-          });
+          let durationLabel = '';
+          if (entry.start && entry.end) {
+            const [sh, sm] = entry.start.split(':').map(Number);
+            const [eh, em] = entry.end.split(':').map(Number);
+            let diffH = ((eh * 60 + em) - (sh * 60 + sm) + 1440) % 1440 / 60;
+            durationLabel = ` · ${diffH.toFixed(1)}h total`;
+          }
           items.push({
             id: 'fast-end-' + entry.id,
             time: entry.end || null,
             icon: '⏳',
             label: 'Fast ended',
-            detail: '',
+            detail: entry.start ? `Started ${formatTime12h(entry.start)}${durationLabel}` : '',
             category: 'fasting',
             entry: entry,
           });
         });
 
-        // Show "Fast started" for a fast that's currently in progress (not yet stopped)
+        // Show "Fast started" for a fast that's currently in progress (not yet stopped) —
+        // this is the ONLY place a standalone "Fast started" milestone appears, always on
+        // the day it actually began, since completed fasts fold that info into "Fast ended" instead.
         if (activeFast && activeFast.startDateKey === dateKey) {
           const target = activeFast.startTime ? getFastTargetEnd(activeFast.startTime) : null;
           items.push({
