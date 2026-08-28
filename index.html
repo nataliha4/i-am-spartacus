@@ -306,10 +306,10 @@
         return null;
       };
 
-      const buildDayItemsForHistory = (dayData, filterType) => {
+      const buildDayItemsForHistory = (dayData, filterTypes) => {
         const items = [];
         const push = (category, icon, label, time, detail) => {
-          if (filterType !== 'all' && filterType !== category) return;
+          if (filterTypes.length > 0 && !filterTypes.includes(category)) return;
           items.push({ category, icon, label, time: time || null, detail: detail || '' });
         };
 
@@ -402,7 +402,7 @@
       const [showWeightEntryForm, setShowWeightEntryForm] = useState(false);
       const [showAddRecurringSupp, setShowAddRecurringSupp] = useState(false);
       const [showAddRecurringGym, setShowAddRecurringGym] = useState(false);
-      const [historyTypeFilter, setHistoryTypeFilter] = useState('all');
+      const [historyTypeFilters, setHistoryTypeFilters] = useState([]);
       const [historyDateFrom, setHistoryDateFrom] = useState('');
       const [historyDateTo, setHistoryDateTo] = useState('');
 
@@ -2667,20 +2667,46 @@
                 <div style={styles.cardTitle}>🔍 Filters</div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Type</label>
-                  <select
-                    value={historyTypeFilter}
-                    onChange={e => setHistoryTypeFilter(e.target.value)}
-                    style={styles.select}
-                  >
-                    <option value="all">All types</option>
-                    <option value="symptoms">🤒 Symptoms</option>
-                    <option value="food">🍎 Food</option>
-                    <option value="supplements">💊 Supplements</option>
-                    <option value="gym">🏋️‍♀️ Gym</option>
-                    <option value="medical">⛑️ Medical</option>
-                    <option value="weight">⚖️ Weight</option>
-                    <option value="fasting">⏳ Fasting</option>
-                  </select>
+                  <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                    {[
+                      { type: 'symptoms', icon: '🤒', label: 'Symptom' },
+                      { type: 'food', icon: '🍎', label: 'Food' },
+                      { type: 'supplements', icon: '💊', label: 'Supplement' },
+                      { type: 'gym', icon: '🏋️‍♀️', label: 'Gym' },
+                      { type: 'medical', icon: '⛑️', label: 'Medical' },
+                      { type: 'weight', icon: '⚖️', label: 'Weight' },
+                      { type: 'fasting', icon: '⏳', label: 'Fasting' },
+                    ].map(opt => {
+                      const selected = historyTypeFilters.includes(opt.type);
+                      return (
+                        <div
+                          key={opt.type}
+                          role="button"
+                          onClick={() => {
+                            setHistoryTypeFilters(prev =>
+                              selected ? prev.filter(t => t !== opt.type) : [...prev, opt.type]
+                            );
+                          }}
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '0.3rem',
+                            padding: '0.75rem 0.4rem',
+                            border: selected ? '2px solid #333' : '2px solid #e0e0e0',
+                            backgroundColor: selected ? '#333' : '#fff',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            minWidth: '68px',
+                            flex: '1 1 68px',
+                          }}
+                        >
+                          <div style={{ fontSize: '22px' }}>{opt.icon}</div>
+                          <div style={{ fontSize: '11px', fontWeight: '600', color: selected ? '#fff' : '#333' }}>{opt.label}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div style={styles.twoColumnForm}>
                   <div style={styles.formGroup}>
@@ -2702,10 +2728,10 @@
                     />
                   </div>
                 </div>
-                {(historyTypeFilter !== 'all' || historyDateFrom || historyDateTo) && (
+                {(historyTypeFilters.length > 0 || historyDateFrom || historyDateTo) && (
                   <div
                     onClick={() => {
-                      setHistoryTypeFilter('all');
+                      setHistoryTypeFilters([]);
                       setHistoryDateFrom('');
                       setHistoryDateTo('');
                     }}
@@ -2723,7 +2749,7 @@
                   .reverse();
 
                 const dayGroups = dates
-                  .map(d => ({ date: d, items: buildDayItemsForHistory(entries[d] || {}, historyTypeFilter) }))
+                  .map(d => ({ date: d, items: buildDayItemsForHistory(entries[d] || {}, historyTypeFilters) }))
                   .filter(g => g.items.length > 0);
 
                 if (dayGroups.length === 0) {
