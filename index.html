@@ -246,10 +246,18 @@
 
         const now = new Date();
         const nowTotalMin = now.getHours() * 60 + now.getMinutes();
-        const diffMin = (targetTotalMin - nowTotalMin + 1440) % 1440;
-        const hoursUntil = Math.round(diffMin / 60);
+        const diffMin = targetTotalMin - nowTotalMin; // negative = overdue, positive = time remaining
 
-        return { time: targetTime, hoursUntil };
+        const isOverdue = diffMin <= 0;
+        const absMin = Math.abs(diffMin);
+        const hoursPart = Math.floor(absMin / 60);
+        const minutesPart = absMin % 60;
+
+        let urgency = 'green';
+        if (isOverdue) urgency = 'red';
+        else if (diffMin <= 60) urgency = 'yellow';
+
+        return { time: targetTime, hoursPart, minutesPart, isOverdue, urgency };
       };
 
       const getFastTargetEnd = (startTime) => {
@@ -352,6 +360,14 @@
       const [timelineEditingKey, setTimelineEditingKey] = useState(null);
       const [addEntryType, setAddEntryType] = useState(null);
       const [editingActiveFastStart, setEditingActiveFastStart] = useState(false);
+      const [settingsSavedFlash, setSettingsSavedFlash] = useState(null);
+
+      const flashSettingsSaved = (fieldKey) => {
+        setSettingsSavedFlash(fieldKey);
+        setTimeout(() => {
+          setSettingsSavedFlash(prev => (prev === fieldKey ? null : prev));
+        }, 1500);
+      };
       const [editActiveFastTime, setEditActiveFastTime] = useState('');
       const [editingCategory, setEditingCategory] = useState(null);
       const [editData, setEditData] = useState({});
@@ -1086,9 +1102,9 @@
           <div style={styles.tabs}>
             {[
               { key: 'dashboard', icon: '📊', name: 'Dashboard' },
-              { key: 'plan', icon: '📋', name: 'Plan for Today' },
-              { key: 'timeline', icon: '🕐', name: 'Day Timeline' },
-              { key: 'settings', icon: '⚙️', name: 'Settings' },
+              { key: 'plan', icon: '🎯', name: 'Plan for Today' },
+              { key: 'timeline', icon: '🧾', name: 'Day Timeline' },
+              { key: 'settings', icon: '🛠️', name: 'Settings' },
             ].map(tab => (
               <div
                 key={tab.key}
@@ -1112,11 +1128,11 @@
           {activeTab === 'dashboard' && (
             <div style={styles.content}>
               <div style={styles.card}>
-                <div style={styles.cardTitle}>📊 Today's Summary</div>
+                <div style={styles.cardTitle}>⏳ Fasting</div>
                 <div style={{ fontSize: '16px', color: '#666', lineHeight: '2', fontWeight: '500' }}>
                   {activeFast ? (
                     editingActiveFastStart ? (
-                      <div style={{ marginBottom: '1rem', padding: '1rem 1.25rem', backgroundColor: '#fff', border: '2px solid #333', borderRadius: '8px' }}>
+                      <div style={{ padding: '1rem 1.25rem', backgroundColor: '#fff', border: '2px solid #333', borderRadius: '8px' }}>
                         <label style={{ fontSize: '13px', color: '#666' }}>Actual fast start time</label>
                         <input
                           type="time"
@@ -1138,31 +1154,64 @@
                         </div>
                       </div>
                     ) : (
-                      <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <span>
-                          <strong style={{ fontSize: '17px' }}>⏳ Fasting:</strong> since {formatTime12h(activeFast.startTime)} · {getElapsedFastLabel()} elapsed
-                        </span>
-                        <span style={{ display: 'flex', gap: '1rem' }}>
-                          <span
-                            onClick={() => {
-                              setEditActiveFastTime(activeFast.startTime);
-                              setEditingActiveFastStart(true);
-                            }}
-                            style={{ color: '#666', fontWeight: '700', fontSize: '15px', cursor: 'pointer' }}
-                          >
-                            Edit
+                      <div>
+                        <div style={{ fontSize: '19px', fontWeight: '700', color: '#3498db', marginBottom: '0.5rem' }}>
+                          ⏳ You're Fasting!
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          <span>
+                            since {formatTime12h(activeFast.startTime)} · {getElapsedFastLabel()} elapsed
                           </span>
-                          <span
-                            onClick={stopFast}
-                            style={{ color: '#e74c3c', fontWeight: '700', fontSize: '15px', cursor: 'pointer' }}
-                          >
-                            Stop Fast
+                          <span style={{ display: 'flex', gap: '1rem' }}>
+                            <span
+                              onClick={() => {
+                                setEditActiveFastTime(activeFast.startTime);
+                                setEditingActiveFastStart(true);
+                              }}
+                              style={{ color: '#666', fontWeight: '700', fontSize: '15px', cursor: 'pointer' }}
+                            >
+                              Edit
+                            </span>
+                            <span
+                              onClick={stopFast}
+                              style={{ color: '#e74c3c', fontWeight: '700', fontSize: '15px', cursor: 'pointer' }}
+                            >
+                              Stop Fast
+                            </span>
                           </span>
-                        </span>
+                        </div>
                       </div>
                     )
                   ) : (
-                    <div style={{ marginBottom: '1rem' }}>
+                    <div>
+                      {(() => {
+                        const next = getNextFastPrediction();
+                        const urgencyColors = { green: '#27ae60', yellow: '#f39c12', red: '#e74c3c' };
+                        const urgencyColor = urgencyColors[next.urgency];
+                        return (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                            <span style={{ fontSize: '19px', fontWeight: '700', color: '#27ae60' }}>
+                              🍽️ You're Eating!
+                            </span>
+                            <button
+                              onClick={startFast}
+                              style={{
+                                backgroundColor: urgencyColor,
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '8px',
+                                padding: '0.75rem 1.5rem',
+                                fontSize: '16px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Start Now
+                            </button>
+                          </div>
+                        );
+                      })()}
+
                       {fastingStatus && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <span>
@@ -1177,49 +1226,46 @@
                           )}
                         </div>
                       )}
+
                       {(() => {
                         const next = getNextFastPrediction();
+                        const urgencyColors = { green: '#27ae60', yellow: '#f39c12', red: '#e74c3c' };
+                        const urgencyColor = urgencyColors[next.urgency];
                         return (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                            <span style={{ color: '#f39c12', fontSize: '15px', fontWeight: '600' }}>
-                              Next fast starts at {formatTime12h(next.time)} (in {next.hoursUntil}h)
-                            </span>
-                            <span
-                              onClick={startFast}
-                              style={{ color: '#e74c3c', fontWeight: '700', fontSize: '15px', cursor: 'pointer' }}
-                            >
-                              Start now
-                            </span>
+                          <div style={{ color: urgencyColor, fontWeight: '600', fontSize: '15px' }}>
+                            {next.isOverdue
+                              ? `You're ${next.hoursPart}h ${next.minutesPart}min past your eating window!`
+                              : `Next fast starts at ${formatTime12h(next.time)} (in ${next.hoursPart}h ${next.minutesPart}min)`}
                           </div>
                         );
                       })()}
                     </div>
                   )}
-
-                  {todayData.weight && (() => {
-                    const latest = todayData.weight[todayData.weight.length - 1];
-                    const current = parseFloat(latest.weight);
-                    const target = latest.target ? parseFloat(latest.target) : null;
-                    const diff = target !== null ? current - target : null;
-                    return (
-                      <div style={{ marginBottom: '1rem' }}>
-                        <strong style={{ fontSize: '17px' }}>Weight:</strong> {latest.weight} kg
-                        {target !== null && (
-                          <span style={{ fontSize: '14px', color: '#666', marginLeft: '0.5rem' }}>
-                            {diff > 0
-                              ? `· ${diff.toFixed(1)} kg to target (${latest.target} kg)`
-                              : diff < 0
-                              ? `· ${Math.abs(diff).toFixed(1)} kg under target (${latest.target} kg)`
-                              : `· At target (${latest.target} kg)`}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })()}
                 </div>
               </div>
+
               <div style={styles.card}>
-                <div style={styles.cardTitle}>🎯 Quick Weight Entry</div>
+                <div style={styles.cardTitle}>⚖️ Weight</div>
+                {todayData.weight && (() => {
+                  const latest = todayData.weight[todayData.weight.length - 1];
+                  const current = parseFloat(latest.weight);
+                  const target = latest.target ? parseFloat(latest.target) : null;
+                  const diff = target !== null ? current - target : null;
+                  return (
+                    <div style={{ fontSize: '16px', color: '#666', fontWeight: '500', marginBottom: '1rem' }}>
+                      <strong style={{ fontSize: '17px' }}>Latest:</strong> {latest.weight} kg
+                      {target !== null && (
+                        <span style={{ fontSize: '14px', color: '#666', marginLeft: '0.5rem' }}>
+                          {diff > 0
+                            ? `· ${diff.toFixed(1)} kg to target (${latest.target} kg)`
+                            : diff < 0
+                            ? `· ${Math.abs(diff).toFixed(1)} kg under target (${latest.target} kg)`
+                            : `· At target (${latest.target} kg)`}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: '140px' }}>
                     <label style={styles.label}>Weight (kg)</label>
@@ -1249,6 +1295,302 @@
                   </div>
                 )}
               </div>
+
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>➕ Add Entry</div>
+                {!addEntryType ? (
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    {[
+                      { type: 'symptoms', icon: '🤒', label: 'Symptom' },
+                      { type: 'food', icon: '🍎', label: 'Food' },
+                      { type: 'supplements', icon: '💊', label: 'Supplement' },
+                      { type: 'gym', icon: '🏋️‍♀️', label: 'Gym' },
+                      { type: 'medical', icon: '⛑️', label: 'Medical' },
+                    ].map(opt => (
+                      <div
+                        key={opt.type}
+                        role="button"
+                        onClick={() => setAddEntryType(opt.type)}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          padding: '1rem 0.5rem',
+                          border: '2px solid #e0e0e0',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          minWidth: '80px',
+                          flex: '1 1 80px',
+                        }}
+                      >
+                        <div style={{ fontSize: '28px' }}>{opt.icon}</div>
+                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>{opt.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div>
+                    {addEntryType === 'symptoms' && (
+                      <>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Symptom</label>
+                          <input
+                            type="text"
+                            placeholder="e.g., Headache"
+                            value={formData.symptom}
+                            onChange={e => setFormData({ ...formData, symptom: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Severity (1-5)</label>
+                          <input
+                            type="range"
+                            min="1"
+                            max="5"
+                            value={formData.symptomLevel}
+                            onChange={e => setFormData({ ...formData, symptomLevel: parseInt(e.target.value) })}
+                            style={{ width: '100%' }}
+                          />
+                          <div style={{ textAlign: 'center', fontSize: '13px', color: '#666', marginTop: '0.3rem' }}>
+                            Level: {formData.symptomLevel} / 5
+                          </div>
+                        </div>
+                        <div style={styles.twoColumnForm}>
+                          <div style={styles.formGroup}>
+                            <label style={styles.label}>Date</label>
+                            <input
+                              type="date"
+                              value={formData.symptomDate}
+                              onChange={e => setFormData({ ...formData, symptomDate: e.target.value })}
+                              style={styles.input}
+                            />
+                          </div>
+                          <div style={styles.formGroup}>
+                            <label style={styles.label}>Time</label>
+                            <input
+                              type="time"
+                              value={formData.symptomTime}
+                              onChange={e => setFormData({ ...formData, symptomTime: e.target.value })}
+                              style={styles.input}
+                            />
+                          </div>
+                        </div>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Notes (optional)</label>
+                          <textarea
+                            placeholder="e.g., Started after lunch"
+                            value={formData.symptomNotes}
+                            onChange={e => setFormData({ ...formData, symptomNotes: e.target.value })}
+                            style={styles.textarea}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              if (formData.symptom) {
+                                addEntry('symptoms', {
+                                  symptom: formData.symptom,
+                                  level: formData.symptomLevel,
+                                  notes: formData.symptomNotes,
+                                  date: formData.symptomDate || currentDate,
+                                  time: formData.symptomTime || getCurrentTimeHHMM(),
+                                });
+                                setAddEntryType(null);
+                              }
+                            }}
+                            style={styles.button}
+                          >
+                            Log Symptom
+                          </button>
+                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
+                        </div>
+                      </>
+                    )}
+                    {addEntryType === 'food' && (
+                      <>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>What did you eat?</label>
+                          <textarea
+                            placeholder="e.g., Grilled chicken, rice, and broccoli"
+                            value={formData.foodNote}
+                            onChange={e => setFormData({ ...formData, foodNote: e.target.value })}
+                            style={styles.textarea}
+                          />
+                        </div>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Time (optional)</label>
+                          <input
+                            type="time"
+                            value={formData.foodTime}
+                            onChange={e => setFormData({ ...formData, foodTime: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              if (formData.foodNote) {
+                                addEntry('food', {
+                                  note: formData.foodNote,
+                                  time: formData.foodTime || getCurrentTimeHHMM(),
+                                });
+                                setAddEntryType(null);
+                              }
+                            }}
+                            style={styles.button}
+                          >
+                            Log Food
+                          </button>
+                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
+                        </div>
+                      </>
+                    )}
+                    {addEntryType === 'supplements' && (
+                      <>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Supplement name</label>
+                          <input
+                            type="text"
+                            placeholder="e.g., Magnesium"
+                            value={formData.supplement}
+                            onChange={e => setFormData({ ...formData, supplement: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Time taken</label>
+                          <input
+                            type="time"
+                            value={formData.supplementTime}
+                            onChange={e => setFormData({ ...formData, supplementTime: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Notes (optional)</label>
+                          <textarea
+                            placeholder="e.g., Taken with food"
+                            value={formData.supplementNotes}
+                            onChange={e => setFormData({ ...formData, supplementNotes: e.target.value })}
+                            style={styles.textarea}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              if (formData.supplement) {
+                                addEntry('supplements', {
+                                  name: formData.supplement,
+                                  time: formData.supplementTime || getCurrentTimeHHMM(),
+                                  notes: formData.supplementNotes,
+                                });
+                                setAddEntryType(null);
+                              }
+                            }}
+                            style={styles.button}
+                          >
+                            Log Supplement
+                          </button>
+                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
+                        </div>
+                      </>
+                    )}
+                    {addEntryType === 'gym' && (
+                      <>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Gym activity</label>
+                          <input
+                            type="text"
+                            placeholder="e.g., Planet Fitness — Chest & Triceps"
+                            value={formData.gymActivity}
+                            onChange={e => setFormData({ ...formData, gymActivity: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Time (optional)</label>
+                          <input
+                            type="time"
+                            value={formData.gymTime}
+                            onChange={e => setFormData({ ...formData, gymTime: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Notes (optional)</label>
+                          <textarea
+                            placeholder="e.g., 60 min, felt strong"
+                            value={formData.gymNotes}
+                            onChange={e => setFormData({ ...formData, gymNotes: e.target.value })}
+                            style={styles.textarea}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              if (formData.gymActivity) {
+                                addEntry('gym', {
+                                  activity: formData.gymActivity,
+                                  notes: formData.gymNotes,
+                                  time: formData.gymTime || getCurrentTimeHHMM(),
+                                });
+                                setAddEntryType(null);
+                              }
+                            }}
+                            style={styles.button}
+                          >
+                            Log Gym Activity
+                          </button>
+                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
+                        </div>
+                      </>
+                    )}
+                    {addEntryType === 'medical' && (
+                      <>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Medical event</label>
+                          <input
+                            type="text"
+                            placeholder="e.g., Doctor visit, blood test, vaccination"
+                            value={formData.medicalEvent}
+                            onChange={e => setFormData({ ...formData, medicalEvent: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Notes (optional)</label>
+                          <textarea
+                            placeholder="e.g., Results showed..."
+                            value={formData.medicalNotes}
+                            onChange={e => setFormData({ ...formData, medicalNotes: e.target.value })}
+                            style={styles.textarea}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              if (formData.medicalEvent) {
+                                addEntry('medical', {
+                                  event: formData.medicalEvent,
+                                  notes: formData.medicalNotes,
+                                  time: getCurrentTimeHHMM(),
+                                });
+                                setAddEntryType(null);
+                              }
+                            }}
+                            style={styles.button}
+                          >
+                            Log Medical Event
+                          </button>
+                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -1265,7 +1607,7 @@
 
                 return (
                   <div style={styles.card}>
-                    <div style={styles.cardTitle}>📋 Plan for Today</div>
+                    <div style={styles.cardTitle}>🎯 Plan for Today</div>
                     <div>
                       {planItems.map(({ item, type }) => {
                         const isSupp = type === 'supplement';
@@ -1486,305 +1828,9 @@
           {/* Day Timeline Tab */}
           {activeTab === 'timeline' && (
             <div style={styles.content}>
-              <div style={styles.card}>
-                <div style={styles.cardTitle}>➕ Add Entry</div>
-                {!addEntryType ? (
-                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    {[
-                      { type: 'symptoms', icon: '🤒', label: 'Symptom' },
-                      { type: 'food', icon: '🍎', label: 'Food' },
-                      { type: 'supplements', icon: '💊', label: 'Supplement' },
-                      { type: 'gym', icon: '🏋️‍♀️', label: 'Gym' },
-                      { type: 'medical', icon: '⛑️', label: 'Medical' },
-                    ].map(opt => (
-                      <div
-                        key={opt.type}
-                        role="button"
-                        onClick={() => setAddEntryType(opt.type)}
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: '0.4rem',
-                          padding: '1rem 0.5rem',
-                          border: '2px solid #e0e0e0',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          minWidth: '80px',
-                          flex: '1 1 80px',
-                        }}
-                      >
-                        <div style={{ fontSize: '28px' }}>{opt.icon}</div>
-                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>{opt.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div>
-                    {addEntryType === 'symptoms' && (
-                      <>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Symptom</label>
-                          <input
-                            type="text"
-                            placeholder="e.g., Headache"
-                            value={formData.symptom}
-                            onChange={e => setFormData({ ...formData, symptom: e.target.value })}
-                            style={styles.input}
-                          />
-                        </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Severity (1-5)</label>
-                          <input
-                            type="range"
-                            min="1"
-                            max="5"
-                            value={formData.symptomLevel}
-                            onChange={e => setFormData({ ...formData, symptomLevel: parseInt(e.target.value) })}
-                            style={{ width: '100%' }}
-                          />
-                          <div style={{ textAlign: 'center', fontSize: '13px', color: '#666', marginTop: '0.3rem' }}>
-                            Level: {formData.symptomLevel} / 5
-                          </div>
-                        </div>
-                        <div style={styles.twoColumnForm}>
-                          <div style={styles.formGroup}>
-                            <label style={styles.label}>Date</label>
-                            <input
-                              type="date"
-                              value={formData.symptomDate}
-                              onChange={e => setFormData({ ...formData, symptomDate: e.target.value })}
-                              style={styles.input}
-                            />
-                          </div>
-                          <div style={styles.formGroup}>
-                            <label style={styles.label}>Time</label>
-                            <input
-                              type="time"
-                              value={formData.symptomTime}
-                              onChange={e => setFormData({ ...formData, symptomTime: e.target.value })}
-                              style={styles.input}
-                            />
-                          </div>
-                        </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Notes (optional)</label>
-                          <textarea
-                            placeholder="e.g., Started after lunch"
-                            value={formData.symptomNotes}
-                            onChange={e => setFormData({ ...formData, symptomNotes: e.target.value })}
-                            style={styles.textarea}
-                          />
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => {
-                              if (formData.symptom) {
-                                addEntry('symptoms', {
-                                  symptom: formData.symptom,
-                                  level: formData.symptomLevel,
-                                  notes: formData.symptomNotes,
-                                  date: formData.symptomDate || currentDate,
-                                  time: formData.symptomTime || getCurrentTimeHHMM(),
-                                });
-                                setAddEntryType(null);
-                              }
-                            }}
-                            style={styles.button}
-                          >
-                            Log Symptom
-                          </button>
-                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
-                        </div>
-                      </>
-                    )}
-                    {addEntryType === 'food' && (
-                      <>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>What did you eat?</label>
-                          <textarea
-                            placeholder="e.g., Grilled chicken, rice, and broccoli"
-                            value={formData.foodNote}
-                            onChange={e => setFormData({ ...formData, foodNote: e.target.value })}
-                            style={styles.textarea}
-                          />
-                        </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Time (optional)</label>
-                          <input
-                            type="time"
-                            value={formData.foodTime}
-                            onChange={e => setFormData({ ...formData, foodTime: e.target.value })}
-                            style={styles.input}
-                          />
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => {
-                              if (formData.foodNote) {
-                                addEntry('food', {
-                                  note: formData.foodNote,
-                                  time: formData.foodTime || getCurrentTimeHHMM(),
-                                });
-                                setAddEntryType(null);
-                              }
-                            }}
-                            style={styles.button}
-                          >
-                            Log Food
-                          </button>
-                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
-                        </div>
-                      </>
-                    )}
-                    {addEntryType === 'supplements' && (
-                      <>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Supplement name</label>
-                          <input
-                            type="text"
-                            placeholder="e.g., Magnesium"
-                            value={formData.supplement}
-                            onChange={e => setFormData({ ...formData, supplement: e.target.value })}
-                            style={styles.input}
-                          />
-                        </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Time taken</label>
-                          <input
-                            type="time"
-                            value={formData.supplementTime}
-                            onChange={e => setFormData({ ...formData, supplementTime: e.target.value })}
-                            style={styles.input}
-                          />
-                        </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Notes (optional)</label>
-                          <textarea
-                            placeholder="e.g., Taken with food"
-                            value={formData.supplementNotes}
-                            onChange={e => setFormData({ ...formData, supplementNotes: e.target.value })}
-                            style={styles.textarea}
-                          />
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => {
-                              if (formData.supplement) {
-                                addEntry('supplements', {
-                                  name: formData.supplement,
-                                  time: formData.supplementTime || getCurrentTimeHHMM(),
-                                  notes: formData.supplementNotes,
-                                });
-                                setAddEntryType(null);
-                              }
-                            }}
-                            style={styles.button}
-                          >
-                            Log Supplement
-                          </button>
-                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
-                        </div>
-                      </>
-                    )}
-                    {addEntryType === 'medical' && (
-                      <>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Medical event</label>
-                          <input
-                            type="text"
-                            placeholder="e.g., Doctor visit, blood test, vaccination"
-                            value={formData.medicalEvent}
-                            onChange={e => setFormData({ ...formData, medicalEvent: e.target.value })}
-                            style={styles.input}
-                          />
-                        </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Notes (optional)</label>
-                          <textarea
-                            placeholder="e.g., Results showed..."
-                            value={formData.medicalNotes}
-                            onChange={e => setFormData({ ...formData, medicalNotes: e.target.value })}
-                            style={styles.textarea}
-                          />
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => {
-                              if (formData.medicalEvent) {
-                                addEntry('medical', {
-                                  event: formData.medicalEvent,
-                                  notes: formData.medicalNotes,
-                                  time: getCurrentTimeHHMM(),
-                                });
-                                setAddEntryType(null);
-                              }
-                            }}
-                            style={styles.button}
-                          >
-                            Log Medical Event
-                          </button>
-                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
-                        </div>
-                      </>
-                    )}
-                    {addEntryType === 'gym' && (
-                      <>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Gym activity</label>
-                          <input
-                            type="text"
-                            placeholder="e.g., Planet Fitness — Chest & Triceps"
-                            value={formData.gymActivity}
-                            onChange={e => setFormData({ ...formData, gymActivity: e.target.value })}
-                            style={styles.input}
-                          />
-                        </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Time (optional)</label>
-                          <input
-                            type="time"
-                            value={formData.gymTime}
-                            onChange={e => setFormData({ ...formData, gymTime: e.target.value })}
-                            style={styles.input}
-                          />
-                        </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Notes (optional)</label>
-                          <textarea
-                            placeholder="e.g., 60 min, felt strong"
-                            value={formData.gymNotes}
-                            onChange={e => setFormData({ ...formData, gymNotes: e.target.value })}
-                            style={styles.textarea}
-                          />
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => {
-                              if (formData.gymActivity) {
-                                addEntry('gym', {
-                                  activity: formData.gymActivity,
-                                  notes: formData.gymNotes,
-                                  time: formData.gymTime || getCurrentTimeHHMM(),
-                                });
-                                setAddEntryType(null);
-                              }
-                            }}
-                            style={styles.button}
-                          >
-                            Log Gym Activity
-                          </button>
-                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-
               {dayTimeline.length > 0 && (
                 <div id="day-timeline-card" style={styles.card}>
-                  <div style={styles.cardTitle}>🕐 Day Timeline</div>
+                  <div style={styles.cardTitle}>🧾 Day Timeline</div>
                   <div>
                     {dayTimeline.map(item => {
                       const editingThis = timelineEditingKey === item.id;
@@ -2072,7 +2118,7 @@
           {activeTab === 'settings' && (
             <div style={styles.content}>
               <div style={styles.card}>
-                <div style={styles.cardTitle}>🎯 Target Weight</div>
+                <div style={styles.cardTitle}>⚖️ Target Weight</div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Target weight (kg)</label>
                   <input
@@ -2080,9 +2126,15 @@
                     step="0.1"
                     placeholder="e.g., 70"
                     value={appSettings.targetWeight}
-                    onChange={e => setAppSettings({ ...appSettings, targetWeight: e.target.value })}
+                    onChange={e => {
+                      setAppSettings({ ...appSettings, targetWeight: e.target.value });
+                      flashSettingsSaved('targetWeight');
+                    }}
                     style={styles.input}
                   />
+                  {settingsSavedFlash === 'targetWeight' && (
+                    <div style={{ fontSize: '13px', color: '#27ae60', fontWeight: '600', marginTop: '0.4rem' }}>✓ Saved</div>
+                  )}
                 </div>
                 <div style={{ fontSize: '13px', color: '#666' }}>
                   Used automatically when you log your weight, and shown on the Dashboard.
@@ -2098,18 +2150,30 @@
                       type="number"
                       step="0.5"
                       value={appSettings.fastingGoalHours}
-                      onChange={e => setAppSettings({ ...appSettings, fastingGoalHours: parseFloat(e.target.value) || 0 })}
+                      onChange={e => {
+                        setAppSettings({ ...appSettings, fastingGoalHours: parseFloat(e.target.value) || 0 });
+                        flashSettingsSaved('fastingGoalHours');
+                      }}
                       style={styles.input}
                     />
+                    {settingsSavedFlash === 'fastingGoalHours' && (
+                      <div style={{ fontSize: '13px', color: '#27ae60', fontWeight: '600', marginTop: '0.4rem' }}>✓ Saved</div>
+                    )}
                   </div>
                   <div style={styles.formGroup}>
                     <label style={styles.label}>Daily start time</label>
                     <input
                       type="time"
                       value={appSettings.fastingStartTime}
-                      onChange={e => setAppSettings({ ...appSettings, fastingStartTime: e.target.value })}
+                      onChange={e => {
+                        setAppSettings({ ...appSettings, fastingStartTime: e.target.value });
+                        flashSettingsSaved('fastingStartTime');
+                      }}
                       style={styles.input}
                     />
+                    {settingsSavedFlash === 'fastingStartTime' && (
+                      <div style={{ fontSize: '13px', color: '#27ae60', fontWeight: '600', marginTop: '0.4rem' }}>✓ Saved</div>
+                    )}
                   </div>
                 </div>
                 <div style={{ fontSize: '13px', color: '#666' }}>
