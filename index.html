@@ -610,6 +610,30 @@
           });
         });
 
+        (todayData.medical || []).forEach(entry => {
+          items.push({
+            id: 'medical-' + entry.id,
+            time: entry.time && entry.time !== 'No time set' ? entry.time : null,
+            icon: '⛑️',
+            label: entry.event,
+            detail: entry.notes || '',
+            category: 'medical',
+            entry: entry,
+          });
+        });
+
+        (todayData.weight || []).forEach(entry => {
+          items.push({
+            id: 'weight-' + entry.id,
+            time: entry.time && entry.time !== 'No time set' ? entry.time : null,
+            icon: '🎯',
+            label: `Weight: ${entry.weight} kg`,
+            detail: entry.target ? `Target: ${entry.target} kg` : '',
+            category: 'weight',
+            entry: entry,
+          });
+        });
+
         (todayData.symptoms || []).forEach(entry => {
           items.push({
             id: 'symp-' + entry.id,
@@ -1064,13 +1088,6 @@
               { key: 'dashboard', icon: '📊', name: 'Dashboard' },
               { key: 'plan', icon: '📋', name: 'Plan for Today' },
               { key: 'timeline', icon: '🕐', name: 'Day Timeline' },
-              { key: 'symptoms', icon: '🤒', name: 'Symptoms' },
-              { key: 'food', icon: '🍎', name: 'Food' },
-              { key: 'supplements', icon: '💊', name: 'Supplements' },
-              { key: 'gym', icon: '🏋️‍♀️', name: 'Gym' },
-              { key: 'fasting', icon: '⏳', name: 'Fasting' },
-              { key: 'weight', icon: '🎯', name: 'Weight' },
-              { key: 'medical', icon: '⛑️', name: 'Medical' },
               { key: 'settings', icon: '⚙️', name: 'Settings' },
             ].map(tab => (
               <div
@@ -1199,12 +1216,6 @@
                       </div>
                     );
                   })()}
-
-                  {todayData.medical && (
-                    <div>
-                      <strong style={{ fontSize: '17px' }}>Other entries:</strong> Medical: {todayData.medical.length}
-                    </div>
-                  )}
                 </div>
               </div>
               <div style={styles.card}>
@@ -1224,7 +1235,7 @@
                   <button
                     onClick={() => {
                       if (formData.weight) {
-                        addEntry('weight', { weight: formData.weight, target: appSettings.targetWeight });
+                        addEntry('weight', { weight: formData.weight, target: appSettings.targetWeight, time: getCurrentTimeHHMM() });
                       }
                     }}
                     style={{ ...styles.button, width: 'auto', padding: '0.9rem 1.5rem' }}
@@ -1704,6 +1715,7 @@
                                 addEntry('medical', {
                                   event: formData.medicalEvent,
                                   notes: formData.medicalNotes,
+                                  time: getCurrentTimeHHMM(),
                                 });
                                 setAddEntryType(null);
                               }
@@ -1921,6 +1933,63 @@
                                 />
                               </>
                             )}
+                            {item.category === 'medical' && (
+                              <>
+                                <label style={{ fontSize: '13px', color: '#666' }}>Medical event</label>
+                                <input
+                                  type="text"
+                                  value={editData.event}
+                                  onChange={e => setEditData({ ...editData, event: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
+                                <input
+                                  type="time"
+                                  value={editData.time || ''}
+                                  onChange={e => setEditData({ ...editData, time: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>Notes</label>
+                                <textarea
+                                  value={editData.notes || ''}
+                                  onChange={e => setEditData({ ...editData, notes: e.target.value })}
+                                  style={{ ...styles.editInput, minHeight: '60px' }}
+                                />
+                              </>
+                            )}
+                            {item.category === 'weight' && (
+                              <>
+                                <div style={styles.twoColumnForm}>
+                                  <div>
+                                    <label style={{ fontSize: '13px', color: '#666' }}>Weight (kg)</label>
+                                    <input
+                                      type="number"
+                                      step="0.1"
+                                      value={editData.weight}
+                                      onChange={e => setEditData({ ...editData, weight: e.target.value })}
+                                      style={styles.editInput}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label style={{ fontSize: '13px', color: '#666' }}>Target (kg)</label>
+                                    <input
+                                      type="number"
+                                      step="0.1"
+                                      value={editData.target || ''}
+                                      onChange={e => setEditData({ ...editData, target: e.target.value })}
+                                      style={styles.editInput}
+                                    />
+                                  </div>
+                                </div>
+                                <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
+                                <input
+                                  type="time"
+                                  value={editData.time || ''}
+                                  onChange={e => setEditData({ ...editData, time: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                              </>
+                            )}
                             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                               <button
                                 onClick={() => {
@@ -1994,651 +2063,6 @@
               {dayTimeline.length === 0 && (
                 <div style={styles.card}>
                   <div style={styles.emptyState}>No entries yet. Start tracking!</div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Fasting Tab */}
-          {activeTab === 'fasting' && (
-            <div style={styles.content}>
-              <div style={styles.card}>
-                <div style={styles.cardTitle}>⏳ Log Fasting Window</div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Fasting start time</label>
-                  <input
-                    type="time"
-                    value={formData.fastingStart}
-                    onChange={e => setFormData({ ...formData, fastingStart: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Fasting end time</label>
-                  <input
-                    type="time"
-                    value={formData.fastingEnd}
-                    onChange={e => setFormData({ ...formData, fastingEnd: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <button
-                  onClick={() => {
-                    if (formData.fastingStart && formData.fastingEnd) {
-                      addEntry('fasting', { start: formData.fastingStart, end: formData.fastingEnd });
-                    }
-                  }}
-                  style={styles.button}
-                >
-                  Log Fasting Window
-                </button>
-              </div>
-
-              {todayData.fasting && (
-                <div>
-                  <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Fasting Windows</h3>
-                  {todayData.fasting.map(entry => (
-                    <div key={entry.id} id={`entry-fasting-${entry.id}`} style={styles.entry}>
-                      {isEditing('fasting', entry.id) ? (
-                        <div>
-                          <label style={{ fontSize: '13px', color: '#666' }}>Start</label>
-                          <input
-                            type="time"
-                            value={editData.start}
-                            onChange={e => setEditData({ ...editData, start: e.target.value })}
-                            style={styles.editInput}
-                          />
-                          <label style={{ fontSize: '13px', color: '#666' }}>End</label>
-                          <input
-                            type="time"
-                            value={editData.end}
-                            onChange={e => setEditData({ ...editData, end: e.target.value })}
-                            style={styles.editInput}
-                          />
-                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                            <button onClick={() => saveEdit('fasting')} style={styles.saveButton}>Save</button>
-                            <button onClick={cancelEdit} style={styles.cancelButton}>Cancel</button>
-                            <button onClick={() => { deleteEntry('fasting', entry.id); cancelEdit(); }} style={styles.deleteButton}>Delete</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          {formatTime12h(entry.start)} → {formatTime12h(entry.end)}
-                          <div style={styles.entryMeta}>
-                            Logged: {entry.timestamp}
-                            <button
-                              onClick={() => startEdit('fasting', entry)}
-                              style={{ ...styles.editButton, marginLeft: '0.5rem' }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => deleteEntry('fasting', entry.id)}
-                              style={{ ...styles.deleteButton, marginLeft: '0.5rem' }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Supplements Tab */}
-          {activeTab === 'supplements' && (
-            <div style={styles.content}>
-              <div style={styles.card}>
-                <div style={styles.cardTitle}>📝 Log Today's Supplements</div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Supplement name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Magnesium"
-                    value={formData.supplement}
-                    onChange={e => setFormData({ ...formData, supplement: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Time taken</label>
-                  <input
-                    type="time"
-                    value={formData.supplementTime}
-                    onChange={e => setFormData({ ...formData, supplementTime: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Notes (optional)</label>
-                  <textarea
-                    placeholder="e.g., Taken with food"
-                    value={formData.supplementNotes}
-                    onChange={e => setFormData({ ...formData, supplementNotes: e.target.value })}
-                    style={styles.textarea}
-                  />
-                </div>
-                <button
-                  onClick={() => {
-                    if (formData.supplement) {
-                      addEntry('supplements', {
-                        name: formData.supplement,
-                        time: formData.supplementTime || getCurrentTimeHHMM(),
-                        notes: formData.supplementNotes,
-                      });
-                    }
-                  }}
-                  style={styles.button}
-                >
-                  Log Supplement
-                </button>
-              </div>
-
-              {todayData.supplements && (
-                <div>
-                  <h3 id="today-supplements-list" style={{ fontSize: '18px', fontWeight: '700', marginBottom: '1rem' }}>Today's Supplements</h3>
-                  {todayData.supplements.map(entry => (
-                    <div key={entry.id} id={`entry-supplements-${entry.id}`} style={styles.entry}>
-                      {isEditing('supplements', entry.id) ? (
-                        <div>
-                          <label style={{ fontSize: '13px', color: '#666' }}>Name</label>
-                          <input
-                            type="text"
-                            value={editData.name}
-                            onChange={e => setEditData({ ...editData, name: e.target.value })}
-                            style={styles.editInput}
-                          />
-                          <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
-                          <input
-                            type="time"
-                            value={editData.time}
-                            onChange={e => setEditData({ ...editData, time: e.target.value })}
-                            style={styles.editInput}
-                          />
-                          <label style={{ fontSize: '13px', color: '#666' }}>Notes</label>
-                          <textarea
-                            value={editData.notes || ''}
-                            onChange={e => setEditData({ ...editData, notes: e.target.value })}
-                            style={{ ...styles.editInput, minHeight: '60px' }}
-                          />
-                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                            <button onClick={() => saveEdit('supplements')} style={styles.saveButton}>Save</button>
-                            <button onClick={cancelEdit} style={styles.cancelButton}>Cancel</button>
-                            <button onClick={() => { deleteEntry('supplements', entry.id); cancelEdit(); }} style={styles.deleteButton}>Delete</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <strong>{entry.name}</strong> at {formatTime12h(entry.time)}
-                          {entry.notes && <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#666' }}>Note: {entry.notes}</div>}
-                          <div style={styles.entryMeta}>
-                            Logged: {entry.timestamp}
-                            <button
-                              onClick={() => startEdit('supplements', entry)}
-                              style={{ ...styles.editButton, marginLeft: '0.5rem' }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => deleteEntry('supplements', entry.id)}
-                              style={{ ...styles.deleteButton, marginLeft: '0.5rem' }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Symptoms Tab */}
-          {activeTab === 'symptoms' && (
-            <div style={styles.content}>
-              <div style={styles.card}>
-                <div style={styles.cardTitle}>🤒 Log Symptom</div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Symptom</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Headache"
-                    value={formData.symptom}
-                    onChange={e => setFormData({ ...formData, symptom: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Severity (1-5)</label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="5"
-                    value={formData.symptomLevel}
-                    onChange={e => setFormData({ ...formData, symptomLevel: parseInt(e.target.value) })}
-                    style={{ width: '100%' }}
-                  />
-                  <div style={{ textAlign: 'center', fontSize: '13px', color: '#666', marginTop: '0.3rem' }}>
-                    Level: {formData.symptomLevel} / 5
-                  </div>
-                </div>
-                <div style={styles.twoColumnForm}>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>Date</label>
-                    <input
-                      type="date"
-                      value={formData.symptomDate}
-                      onChange={e => setFormData({ ...formData, symptomDate: e.target.value })}
-                      style={styles.input}
-                    />
-                  </div>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>Time</label>
-                    <input
-                      type="time"
-                      value={formData.symptomTime}
-                      onChange={e => setFormData({ ...formData, symptomTime: e.target.value })}
-                      style={styles.input}
-                    />
-                  </div>
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Notes (optional)</label>
-                  <textarea
-                    placeholder="e.g., Started after lunch"
-                    value={formData.symptomNotes}
-                    onChange={e => setFormData({ ...formData, symptomNotes: e.target.value })}
-                    style={styles.textarea}
-                  />
-                </div>
-                <button
-                  onClick={() => {
-                    if (formData.symptom) {
-                      addEntry('symptoms', {
-                        symptom: formData.symptom,
-                        level: formData.symptomLevel,
-                        notes: formData.symptomNotes,
-                        date: formData.symptomDate || currentDate,
-                        time: formData.symptomTime || getCurrentTimeHHMM(),
-                      });
-                    }
-                  }}
-                  style={styles.button}
-                >
-                  Log Symptom
-                </button>
-              </div>
-
-              {todayData.symptoms && (
-                <div>
-                  <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Symptoms</h3>
-                  {todayData.symptoms.map(entry => (
-                    <div key={entry.id} id={`entry-symptoms-${entry.id}`} style={styles.entry}>
-                      {isEditing('symptoms', entry.id) ? (
-                        <div>
-                          <label style={{ fontSize: '13px', color: '#666' }}>Symptom</label>
-                          <input
-                            type="text"
-                            value={editData.symptom}
-                            onChange={e => setEditData({ ...editData, symptom: e.target.value })}
-                            style={styles.editInput}
-                          />
-                          <label style={{ fontSize: '13px', color: '#666' }}>Severity (1-5)</label>
-                          <input
-                            type="range"
-                            min="1"
-                            max="5"
-                            value={editData.level}
-                            onChange={e => setEditData({ ...editData, level: parseInt(e.target.value) })}
-                            style={{ width: '100%', marginBottom: '0.5rem' }}
-                          />
-                          <div style={{ textAlign: 'center', fontSize: '13px', color: '#666', marginBottom: '0.5rem' }}>
-                            Level: {editData.level} / 5
-                          </div>
-                          <div style={styles.twoColumnForm}>
-                            <div>
-                              <label style={{ fontSize: '13px', color: '#666' }}>Date</label>
-                              <input
-                                type="date"
-                                value={editData.date}
-                                onChange={e => setEditData({ ...editData, date: e.target.value })}
-                                style={styles.editInput}
-                              />
-                            </div>
-                            <div>
-                              <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
-                              <input
-                                type="time"
-                                value={editData.time}
-                                onChange={e => setEditData({ ...editData, time: e.target.value })}
-                                style={styles.editInput}
-                              />
-                            </div>
-                          </div>
-                          <label style={{ fontSize: '13px', color: '#666' }}>Notes</label>
-                          <textarea
-                            value={editData.notes || ''}
-                            onChange={e => setEditData({ ...editData, notes: e.target.value })}
-                            style={{ ...styles.editInput, minHeight: '60px' }}
-                          />
-                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                            <button onClick={() => saveEdit('symptoms')} style={styles.saveButton}>Save</button>
-                            <button onClick={cancelEdit} style={styles.cancelButton}>Cancel</button>
-                            <button onClick={() => { deleteEntry('symptoms', entry.id); cancelEdit(); }} style={styles.deleteButton}>Delete</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <strong>{entry.symptom}</strong> — Level {entry.level}/5
-                          {entry.notes && <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#666' }}>{entry.notes}</div>}
-                          <div style={styles.entryMeta}>
-                            Occurred: {entry.date} at {formatTime12h(entry.time)} · Logged: {entry.timestamp}
-                            <button
-                              onClick={() => startEdit('symptoms', entry)}
-                              style={{ ...styles.editButton, marginLeft: '0.5rem' }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => deleteEntry('symptoms', entry.id)}
-                              style={{ ...styles.deleteButton, marginLeft: '0.5rem' }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Weight Tab */}
-          {activeTab === 'weight' && (
-            <div style={styles.content}>
-              <div style={styles.card}>
-                <div style={styles.cardTitle}>🎯 Log Weight</div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Weight (kg)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    placeholder="e.g., 75.5"
-                    value={formData.weight}
-                    onChange={e => setFormData({ ...formData, weight: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                {appSettings.targetWeight && (
-                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '1rem' }}>
-                    Target: {appSettings.targetWeight} kg (set in Settings)
-                  </div>
-                )}
-                <button
-                  onClick={() => {
-                    if (formData.weight) {
-                      addEntry('weight', {
-                        weight: formData.weight,
-                        target: appSettings.targetWeight,
-                      });
-                    }
-                  }}
-                  style={styles.button}
-                >
-                  Log Weight
-                </button>
-              </div>
-
-              {todayData.weight && (
-                <div>
-                  <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Weight</h3>
-                  {todayData.weight.map(entry => (
-                    <div key={entry.id} id={`entry-weight-${entry.id}`} style={styles.entry}>
-                      {isEditing('weight', entry.id) ? (
-                        <div>
-                          <div style={styles.twoColumnForm}>
-                            <div>
-                              <label style={{ fontSize: '13px', color: '#666' }}>Weight (kg)</label>
-                              <input
-                                type="number"
-                                step="0.1"
-                                value={editData.weight}
-                                onChange={e => setEditData({ ...editData, weight: e.target.value })}
-                                style={styles.editInput}
-                              />
-                            </div>
-                            <div>
-                              <label style={{ fontSize: '13px', color: '#666' }}>Target (kg)</label>
-                              <input
-                                type="number"
-                                step="0.1"
-                                value={editData.target || ''}
-                                onChange={e => setEditData({ ...editData, target: e.target.value })}
-                                style={styles.editInput}
-                              />
-                            </div>
-                          </div>
-                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                            <button onClick={() => saveEdit('weight')} style={styles.saveButton}>Save</button>
-                            <button onClick={cancelEdit} style={styles.cancelButton}>Cancel</button>
-                            <button onClick={() => { deleteEntry('weight', entry.id); cancelEdit(); }} style={styles.deleteButton}>Delete</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <strong>{entry.weight} kg</strong>
-                          {entry.target && <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#666' }}>Target: {entry.target} kg</div>}
-                          <div style={styles.entryMeta}>
-                            Logged: {entry.timestamp}
-                            <button
-                              onClick={() => startEdit('weight', entry)}
-                              style={{ ...styles.editButton, marginLeft: '0.5rem' }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => deleteEntry('weight', entry.id)}
-                              style={{ ...styles.deleteButton, marginLeft: '0.5rem' }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Food Tab */}
-          {activeTab === 'food' && (
-            <div style={styles.content}>
-              <div style={styles.card}>
-                <div style={styles.cardTitle}>🍎 Log Food</div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>What did you eat?</label>
-                  <textarea
-                    placeholder="e.g., Grilled chicken, rice, and broccoli"
-                    value={formData.foodNote}
-                    onChange={e => setFormData({ ...formData, foodNote: e.target.value })}
-                    style={styles.textarea}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Time (optional)</label>
-                  <input
-                    type="time"
-                    value={formData.foodTime}
-                    onChange={e => setFormData({ ...formData, foodTime: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <button
-                  onClick={() => {
-                    if (formData.foodNote) {
-                      addEntry('food', {
-                        note: formData.foodNote,
-                        time: formData.foodTime || getCurrentTimeHHMM(),
-                      });
-                    }
-                  }}
-                  style={styles.button}
-                >
-                  Log Food
-                </button>
-              </div>
-
-              {todayData.food && (
-                <div>
-                  <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Food</h3>
-                  {todayData.food.map(entry => (
-                    <div key={entry.id} id={`entry-food-${entry.id}`} style={styles.entry}>
-                      {isEditing('food', entry.id) ? (
-                        <div>
-                          <label style={{ fontSize: '13px', color: '#666' }}>What did you eat?</label>
-                          <textarea
-                            value={editData.note}
-                            onChange={e => setEditData({ ...editData, note: e.target.value })}
-                            style={{ ...styles.editInput, minHeight: '60px' }}
-                          />
-                          <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
-                          <input
-                            type="time"
-                            value={editData.time}
-                            onChange={e => setEditData({ ...editData, time: e.target.value })}
-                            style={styles.editInput}
-                          />
-                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                            <button onClick={() => saveEdit('food')} style={styles.saveButton}>Save</button>
-                            <button onClick={cancelEdit} style={styles.cancelButton}>Cancel</button>
-                            <button onClick={() => { deleteEntry('food', entry.id); cancelEdit(); }} style={styles.deleteButton}>Delete</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div style={{ fontSize: '13px' }}>{entry.note}</div>
-                          <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#999' }}>at {formatTime12h(entry.time)}</div>
-                          <div style={styles.entryMeta}>
-                            Logged: {entry.timestamp}
-                            <button
-                              onClick={() => startEdit('food', entry)}
-                              style={{ ...styles.editButton, marginLeft: '0.5rem' }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => deleteEntry('food', entry.id)}
-                              style={{ ...styles.deleteButton, marginLeft: '0.5rem' }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Medical Tab */}
-          {activeTab === 'medical' && (
-            <div style={styles.content}>
-              <div style={styles.card}>
-                <div style={styles.cardTitle}>⛑️ Log Medical Event</div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Medical event</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Doctor visit, blood test, vaccination"
-                    value={formData.medicalEvent}
-                    onChange={e => setFormData({ ...formData, medicalEvent: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Notes (optional)</label>
-                  <textarea
-                    placeholder="e.g., Results showed..."
-                    value={formData.medicalNotes}
-                    onChange={e => setFormData({ ...formData, medicalNotes: e.target.value })}
-                    style={styles.textarea}
-                  />
-                </div>
-                <button
-                  onClick={() => {
-                    if (formData.medicalEvent) {
-                      addEntry('medical', {
-                        event: formData.medicalEvent,
-                        notes: formData.medicalNotes,
-                      });
-                    }
-                  }}
-                  style={styles.button}
-                >
-                  Log Medical Event
-                </button>
-              </div>
-
-              {todayData.medical && (
-                <div>
-                  <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Medical Events</h3>
-                  {todayData.medical.map(entry => (
-                    <div key={entry.id} id={`entry-medical-${entry.id}`} style={styles.entry}>
-                      {isEditing('medical', entry.id) ? (
-                        <div>
-                          <label style={{ fontSize: '13px', color: '#666' }}>Medical event</label>
-                          <input
-                            type="text"
-                            value={editData.event}
-                            onChange={e => setEditData({ ...editData, event: e.target.value })}
-                            style={styles.editInput}
-                          />
-                          <label style={{ fontSize: '13px', color: '#666' }}>Notes</label>
-                          <textarea
-                            value={editData.notes || ''}
-                            onChange={e => setEditData({ ...editData, notes: e.target.value })}
-                            style={{ ...styles.editInput, minHeight: '60px' }}
-                          />
-                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                            <button onClick={() => saveEdit('medical')} style={styles.saveButton}>Save</button>
-                            <button onClick={cancelEdit} style={styles.cancelButton}>Cancel</button>
-                            <button onClick={() => { deleteEntry('medical', entry.id); cancelEdit(); }} style={styles.deleteButton}>Delete</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <strong>{entry.event}</strong>
-                          {entry.notes && <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#666' }}>{entry.notes}</div>}
-                          <div style={styles.entryMeta}>
-                            Logged: {entry.timestamp}
-                            <button
-                              onClick={() => startEdit('medical', entry)}
-                              style={{ ...styles.editButton, marginLeft: '0.5rem' }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => deleteEntry('medical', entry.id)}
-                              style={{ ...styles.deleteButton, marginLeft: '0.5rem' }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
                 </div>
               )}
             </div>
@@ -3022,117 +2446,6 @@
                   Add Recurring Gym Activity
                 </button>
               </div>
-            </div>
-          )}
-
-          {/* Gym Tab */}
-          {activeTab === 'gym' && (
-            <div style={styles.content}>
-              <div style={styles.card}>
-                <div style={styles.cardTitle}>🏋️‍♀️ Log Gym Activity</div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Gym activity</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Planet Fitness — Chest & Triceps"
-                    value={formData.gymActivity}
-                    onChange={e => setFormData({ ...formData, gymActivity: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Time (optional)</label>
-                  <input
-                    type="time"
-                    value={formData.gymTime}
-                    onChange={e => setFormData({ ...formData, gymTime: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Notes (optional)</label>
-                  <textarea
-                    placeholder="e.g., 60 min, felt strong"
-                    value={formData.gymNotes}
-                    onChange={e => setFormData({ ...formData, gymNotes: e.target.value })}
-                    style={styles.textarea}
-                  />
-                </div>
-                <button
-                  onClick={() => {
-                    if (formData.gymActivity) {
-                      addEntry('gym', {
-                        activity: formData.gymActivity,
-                        notes: formData.gymNotes,
-                        time: formData.gymTime || getCurrentTimeHHMM(),
-                      });
-                    }
-                  }}
-                  style={styles.button}
-                >
-                  Log Gym Activity
-                </button>
-              </div>
-
-              {todayData.gym && (
-                <div>
-                  <h3 style={{ fontSize: '14px', marginBottom: '0.75rem' }}>Today's Gym Activity</h3>
-                  {todayData.gym.map(entry => (
-                    <div key={entry.id} id={`entry-gym-${entry.id}`} style={styles.entry}>
-                      {isEditing('gym', entry.id) ? (
-                        <div>
-                          <label style={{ fontSize: '13px', color: '#666' }}>Gym activity</label>
-                          <input
-                            type="text"
-                            value={editData.activity}
-                            onChange={e => setEditData({ ...editData, activity: e.target.value })}
-                            style={styles.editInput}
-                          />
-                          <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
-                          <input
-                            type="time"
-                            value={editData.time || ''}
-                            onChange={e => setEditData({ ...editData, time: e.target.value })}
-                            style={styles.editInput}
-                          />
-                          <label style={{ fontSize: '13px', color: '#666' }}>Notes</label>
-                          <textarea
-                            value={editData.notes || ''}
-                            onChange={e => setEditData({ ...editData, notes: e.target.value })}
-                            style={{ ...styles.editInput, minHeight: '60px' }}
-                          />
-                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                            <button onClick={() => saveEdit('gym')} style={styles.saveButton}>Save</button>
-                            <button onClick={cancelEdit} style={styles.cancelButton}>Cancel</button>
-                            <button onClick={() => { deleteEntry('gym', entry.id); cancelEdit(); }} style={styles.deleteButton}>Delete</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <strong>{entry.activity}</strong>
-                          {entry.time && <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#999' }}>at {formatTime12h(entry.time)}</div>}
-                          {entry.notes && <div style={{ marginTop: '0.3rem', fontSize: '12px', color: '#666' }}>{entry.notes}</div>}
-                          <div style={styles.entryMeta}>
-                            Logged: {entry.timestamp}
-                            <button
-                              onClick={() => startEdit('gym', entry)}
-                              style={{ ...styles.editButton, marginLeft: '0.5rem' }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => deleteEntry('gym', entry.id)}
-                              style={{ ...styles.deleteButton, marginLeft: '0.5rem' }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
         </div>
