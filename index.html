@@ -218,6 +218,18 @@
         setActiveFast(null);
       };
 
+      const saveActiveFastStartTime = (newTime) => {
+        if (!activeFast || !newTime) return;
+        const startDate = parseLocalDate(activeFast.startDateKey);
+        const [hh, mm] = newTime.split(':').map(Number);
+        startDate.setHours(hh, mm, 0, 0);
+        setActiveFast({
+          ...activeFast,
+          startTime: newTime,
+          startTimestampMs: startDate.getTime(),
+        });
+      };
+
       const getElapsedFastLabel = () => {
         if (!activeFast) return '';
         const elapsedMs = Date.now() - activeFast.startTimestampMs;
@@ -339,6 +351,8 @@
       const [editingId, setEditingId] = useState(null);
       const [timelineEditingKey, setTimelineEditingKey] = useState(null);
       const [addEntryType, setAddEntryType] = useState(null);
+      const [editingActiveFastStart, setEditingActiveFastStart] = useState(false);
+      const [editActiveFastTime, setEditActiveFastTime] = useState('');
       const [editingCategory, setEditingCategory] = useState(null);
       const [editData, setEditData] = useState({});
 
@@ -1084,17 +1098,52 @@
                 <div style={styles.cardTitle}>📊 Today's Summary</div>
                 <div style={{ fontSize: '16px', color: '#666', lineHeight: '2', fontWeight: '500' }}>
                   {activeFast ? (
-                    <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      <span>
-                        <strong style={{ fontSize: '17px' }}>⏳ Fasting:</strong> since {formatTime12h(activeFast.startTime)} · {getElapsedFastLabel()} elapsed
-                      </span>
-                      <span
-                        onClick={stopFast}
-                        style={{ color: '#e74c3c', fontWeight: '700', fontSize: '15px', cursor: 'pointer' }}
-                      >
-                        Stop Fast
-                      </span>
-                    </div>
+                    editingActiveFastStart ? (
+                      <div style={{ marginBottom: '1rem', padding: '1rem 1.25rem', backgroundColor: '#fff', border: '2px solid #333', borderRadius: '8px' }}>
+                        <label style={{ fontSize: '13px', color: '#666' }}>Actual fast start time</label>
+                        <input
+                          type="time"
+                          value={editActiveFastTime}
+                          onChange={e => setEditActiveFastTime(e.target.value)}
+                          style={styles.editInput}
+                        />
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              saveActiveFastStartTime(editActiveFastTime);
+                              setEditingActiveFastStart(false);
+                            }}
+                            style={styles.saveButton}
+                          >
+                            Save
+                          </button>
+                          <button onClick={() => setEditingActiveFastStart(false)} style={styles.cancelButton}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <span>
+                          <strong style={{ fontSize: '17px' }}>⏳ Fasting:</strong> since {formatTime12h(activeFast.startTime)} · {getElapsedFastLabel()} elapsed
+                        </span>
+                        <span style={{ display: 'flex', gap: '1rem' }}>
+                          <span
+                            onClick={() => {
+                              setEditActiveFastTime(activeFast.startTime);
+                              setEditingActiveFastStart(true);
+                            }}
+                            style={{ color: '#666', fontWeight: '700', fontSize: '15px', cursor: 'pointer' }}
+                          >
+                            Edit
+                          </span>
+                          <span
+                            onClick={stopFast}
+                            style={{ color: '#e74c3c', fontWeight: '700', fontSize: '15px', cursor: 'pointer' }}
+                          >
+                            Stop Fast
+                          </span>
+                        </span>
+                      </div>
+                    )
                   ) : (
                     <div style={{ marginBottom: '1rem' }}>
                       {fastingStatus && (
