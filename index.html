@@ -373,6 +373,8 @@
       const [editingActiveFastStart, setEditingActiveFastStart] = useState(false);
       const [settingsSavedFlash, setSettingsSavedFlash] = useState(null);
       const [showWeightEntryForm, setShowWeightEntryForm] = useState(false);
+      const [showAddRecurringSupp, setShowAddRecurringSupp] = useState(false);
+      const [showAddRecurringGym, setShowAddRecurringGym] = useState(false);
 
       const flashSettingsSaved = (fieldKey) => {
         setSettingsSavedFlash(fieldKey);
@@ -1025,6 +1027,304 @@
         },
       };
 
+      const renderAddEntryCard = () => (
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>➕ Add Entry</div>
+                {!addEntryType ? (
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    {[
+                      { type: 'symptoms', icon: '🤒', label: 'Symptom' },
+                      { type: 'food', icon: '🍎', label: 'Food' },
+                      { type: 'supplements', icon: '💊', label: 'Supplement' },
+                      { type: 'gym', icon: '🏋️‍♀️', label: 'Gym' },
+                      { type: 'medical', icon: '⛑️', label: 'Medical' },
+                    ].map(opt => (
+                      <div
+                        key={opt.type}
+                        role="button"
+                        onClick={() => setAddEntryType(opt.type)}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          padding: '1rem 0.5rem',
+                          border: '2px solid #e0e0e0',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          minWidth: '80px',
+                          flex: '1 1 80px',
+                        }}
+                      >
+                        <div style={{ fontSize: '28px' }}>{opt.icon}</div>
+                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>{opt.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div>
+                    {addEntryType === 'symptoms' && (
+                      <>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Symptom</label>
+                          <input
+                            type="text"
+                            placeholder="e.g., Headache"
+                            value={formData.symptom}
+                            onChange={e => setFormData({ ...formData, symptom: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Severity (1-5)</label>
+                          <input
+                            type="range"
+                            min="1"
+                            max="5"
+                            value={formData.symptomLevel}
+                            onChange={e => setFormData({ ...formData, symptomLevel: parseInt(e.target.value) })}
+                            style={{ width: '100%' }}
+                          />
+                          <div style={{ textAlign: 'center', fontSize: '13px', color: '#666', marginTop: '0.3rem' }}>
+                            Level: {formData.symptomLevel} / 5
+                          </div>
+                        </div>
+                        <div style={styles.twoColumnForm}>
+                          <div style={styles.formGroup}>
+                            <label style={styles.label}>Date</label>
+                            <input
+                              type="date"
+                              value={formData.symptomDate}
+                              onChange={e => setFormData({ ...formData, symptomDate: e.target.value })}
+                              style={styles.input}
+                            />
+                          </div>
+                          <div style={styles.formGroup}>
+                            <label style={styles.label}>Time</label>
+                            <input
+                              type="time"
+                              value={formData.symptomTime}
+                              onChange={e => setFormData({ ...formData, symptomTime: e.target.value })}
+                              style={styles.input}
+                            />
+                          </div>
+                        </div>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Notes (optional)</label>
+                          <textarea
+                            placeholder="e.g., Started after lunch"
+                            value={formData.symptomNotes}
+                            onChange={e => setFormData({ ...formData, symptomNotes: e.target.value })}
+                            style={styles.textarea}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              if (formData.symptom) {
+                                addEntry('symptoms', {
+                                  symptom: formData.symptom,
+                                  level: formData.symptomLevel,
+                                  notes: formData.symptomNotes,
+                                  date: formData.symptomDate || currentDate,
+                                  time: formData.symptomTime || getCurrentTimeHHMM(),
+                                });
+                                setAddEntryType(null);
+                              }
+                            }}
+                            style={styles.button}
+                          >
+                            Log Symptom
+                          </button>
+                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
+                        </div>
+                      </>
+                    )}
+                    {addEntryType === 'food' && (
+                      <>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>What did you eat?</label>
+                          <textarea
+                            placeholder="e.g., Grilled chicken, rice, and broccoli"
+                            value={formData.foodNote}
+                            onChange={e => setFormData({ ...formData, foodNote: e.target.value })}
+                            style={styles.textarea}
+                          />
+                        </div>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Time (optional)</label>
+                          <input
+                            type="time"
+                            value={formData.foodTime}
+                            onChange={e => setFormData({ ...formData, foodTime: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              if (formData.foodNote) {
+                                addEntry('food', {
+                                  note: formData.foodNote,
+                                  time: formData.foodTime || getCurrentTimeHHMM(),
+                                });
+                                setAddEntryType(null);
+                              }
+                            }}
+                            style={styles.button}
+                          >
+                            Log Food
+                          </button>
+                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
+                        </div>
+                      </>
+                    )}
+                    {addEntryType === 'supplements' && (
+                      <>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Supplement name</label>
+                          <input
+                            type="text"
+                            placeholder="e.g., Magnesium"
+                            value={formData.supplement}
+                            onChange={e => setFormData({ ...formData, supplement: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Time taken</label>
+                          <input
+                            type="time"
+                            value={formData.supplementTime}
+                            onChange={e => setFormData({ ...formData, supplementTime: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Notes (optional)</label>
+                          <textarea
+                            placeholder="e.g., Taken with food"
+                            value={formData.supplementNotes}
+                            onChange={e => setFormData({ ...formData, supplementNotes: e.target.value })}
+                            style={styles.textarea}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              if (formData.supplement) {
+                                addEntry('supplements', {
+                                  name: formData.supplement,
+                                  time: formData.supplementTime || getCurrentTimeHHMM(),
+                                  notes: formData.supplementNotes,
+                                });
+                                setAddEntryType(null);
+                              }
+                            }}
+                            style={styles.button}
+                          >
+                            Log Supplement
+                          </button>
+                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
+                        </div>
+                      </>
+                    )}
+                    {addEntryType === 'gym' && (
+                      <>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Gym activity</label>
+                          <input
+                            type="text"
+                            placeholder="e.g., Planet Fitness — Chest & Triceps"
+                            value={formData.gymActivity}
+                            onChange={e => setFormData({ ...formData, gymActivity: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Time (optional)</label>
+                          <input
+                            type="time"
+                            value={formData.gymTime}
+                            onChange={e => setFormData({ ...formData, gymTime: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Notes (optional)</label>
+                          <textarea
+                            placeholder="e.g., 60 min, felt strong"
+                            value={formData.gymNotes}
+                            onChange={e => setFormData({ ...formData, gymNotes: e.target.value })}
+                            style={styles.textarea}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              if (formData.gymActivity) {
+                                addEntry('gym', {
+                                  activity: formData.gymActivity,
+                                  notes: formData.gymNotes,
+                                  time: formData.gymTime || getCurrentTimeHHMM(),
+                                });
+                                setAddEntryType(null);
+                              }
+                            }}
+                            style={styles.button}
+                          >
+                            Log Gym Activity
+                          </button>
+                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
+                        </div>
+                      </>
+                    )}
+                    {addEntryType === 'medical' && (
+                      <>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Medical event</label>
+                          <input
+                            type="text"
+                            placeholder="e.g., Doctor visit, blood test, vaccination"
+                            value={formData.medicalEvent}
+                            onChange={e => setFormData({ ...formData, medicalEvent: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Notes (optional)</label>
+                          <textarea
+                            placeholder="e.g., Results showed..."
+                            value={formData.medicalNotes}
+                            onChange={e => setFormData({ ...formData, medicalNotes: e.target.value })}
+                            style={styles.textarea}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              if (formData.medicalEvent) {
+                                addEntry('medical', {
+                                  event: formData.medicalEvent,
+                                  notes: formData.medicalNotes,
+                                  time: getCurrentTimeHHMM(),
+                                });
+                                setAddEntryType(null);
+                              }
+                            }}
+                            style={styles.button}
+                          >
+                            Log Medical Event
+                          </button>
+                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+      );
+
       return (
         <div style={styles.container}>
           <div style={styles.header}>
@@ -1373,301 +1673,7 @@
                 })()}
               </div>
 
-              <div style={styles.card}>
-                <div style={styles.cardTitle}>➕ Add Entry</div>
-                {!addEntryType ? (
-                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    {[
-                      { type: 'symptoms', icon: '🤒', label: 'Symptom' },
-                      { type: 'food', icon: '🍎', label: 'Food' },
-                      { type: 'supplements', icon: '💊', label: 'Supplement' },
-                      { type: 'gym', icon: '🏋️‍♀️', label: 'Gym' },
-                      { type: 'medical', icon: '⛑️', label: 'Medical' },
-                    ].map(opt => (
-                      <div
-                        key={opt.type}
-                        role="button"
-                        onClick={() => setAddEntryType(opt.type)}
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: '0.4rem',
-                          padding: '1rem 0.5rem',
-                          border: '2px solid #e0e0e0',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          minWidth: '80px',
-                          flex: '1 1 80px',
-                        }}
-                      >
-                        <div style={{ fontSize: '28px' }}>{opt.icon}</div>
-                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>{opt.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div>
-                    {addEntryType === 'symptoms' && (
-                      <>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Symptom</label>
-                          <input
-                            type="text"
-                            placeholder="e.g., Headache"
-                            value={formData.symptom}
-                            onChange={e => setFormData({ ...formData, symptom: e.target.value })}
-                            style={styles.input}
-                          />
-                        </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Severity (1-5)</label>
-                          <input
-                            type="range"
-                            min="1"
-                            max="5"
-                            value={formData.symptomLevel}
-                            onChange={e => setFormData({ ...formData, symptomLevel: parseInt(e.target.value) })}
-                            style={{ width: '100%' }}
-                          />
-                          <div style={{ textAlign: 'center', fontSize: '13px', color: '#666', marginTop: '0.3rem' }}>
-                            Level: {formData.symptomLevel} / 5
-                          </div>
-                        </div>
-                        <div style={styles.twoColumnForm}>
-                          <div style={styles.formGroup}>
-                            <label style={styles.label}>Date</label>
-                            <input
-                              type="date"
-                              value={formData.symptomDate}
-                              onChange={e => setFormData({ ...formData, symptomDate: e.target.value })}
-                              style={styles.input}
-                            />
-                          </div>
-                          <div style={styles.formGroup}>
-                            <label style={styles.label}>Time</label>
-                            <input
-                              type="time"
-                              value={formData.symptomTime}
-                              onChange={e => setFormData({ ...formData, symptomTime: e.target.value })}
-                              style={styles.input}
-                            />
-                          </div>
-                        </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Notes (optional)</label>
-                          <textarea
-                            placeholder="e.g., Started after lunch"
-                            value={formData.symptomNotes}
-                            onChange={e => setFormData({ ...formData, symptomNotes: e.target.value })}
-                            style={styles.textarea}
-                          />
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => {
-                              if (formData.symptom) {
-                                addEntry('symptoms', {
-                                  symptom: formData.symptom,
-                                  level: formData.symptomLevel,
-                                  notes: formData.symptomNotes,
-                                  date: formData.symptomDate || currentDate,
-                                  time: formData.symptomTime || getCurrentTimeHHMM(),
-                                });
-                                setAddEntryType(null);
-                              }
-                            }}
-                            style={styles.button}
-                          >
-                            Log Symptom
-                          </button>
-                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
-                        </div>
-                      </>
-                    )}
-                    {addEntryType === 'food' && (
-                      <>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>What did you eat?</label>
-                          <textarea
-                            placeholder="e.g., Grilled chicken, rice, and broccoli"
-                            value={formData.foodNote}
-                            onChange={e => setFormData({ ...formData, foodNote: e.target.value })}
-                            style={styles.textarea}
-                          />
-                        </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Time (optional)</label>
-                          <input
-                            type="time"
-                            value={formData.foodTime}
-                            onChange={e => setFormData({ ...formData, foodTime: e.target.value })}
-                            style={styles.input}
-                          />
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => {
-                              if (formData.foodNote) {
-                                addEntry('food', {
-                                  note: formData.foodNote,
-                                  time: formData.foodTime || getCurrentTimeHHMM(),
-                                });
-                                setAddEntryType(null);
-                              }
-                            }}
-                            style={styles.button}
-                          >
-                            Log Food
-                          </button>
-                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
-                        </div>
-                      </>
-                    )}
-                    {addEntryType === 'supplements' && (
-                      <>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Supplement name</label>
-                          <input
-                            type="text"
-                            placeholder="e.g., Magnesium"
-                            value={formData.supplement}
-                            onChange={e => setFormData({ ...formData, supplement: e.target.value })}
-                            style={styles.input}
-                          />
-                        </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Time taken</label>
-                          <input
-                            type="time"
-                            value={formData.supplementTime}
-                            onChange={e => setFormData({ ...formData, supplementTime: e.target.value })}
-                            style={styles.input}
-                          />
-                        </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Notes (optional)</label>
-                          <textarea
-                            placeholder="e.g., Taken with food"
-                            value={formData.supplementNotes}
-                            onChange={e => setFormData({ ...formData, supplementNotes: e.target.value })}
-                            style={styles.textarea}
-                          />
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => {
-                              if (formData.supplement) {
-                                addEntry('supplements', {
-                                  name: formData.supplement,
-                                  time: formData.supplementTime || getCurrentTimeHHMM(),
-                                  notes: formData.supplementNotes,
-                                });
-                                setAddEntryType(null);
-                              }
-                            }}
-                            style={styles.button}
-                          >
-                            Log Supplement
-                          </button>
-                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
-                        </div>
-                      </>
-                    )}
-                    {addEntryType === 'gym' && (
-                      <>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Gym activity</label>
-                          <input
-                            type="text"
-                            placeholder="e.g., Planet Fitness — Chest & Triceps"
-                            value={formData.gymActivity}
-                            onChange={e => setFormData({ ...formData, gymActivity: e.target.value })}
-                            style={styles.input}
-                          />
-                        </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Time (optional)</label>
-                          <input
-                            type="time"
-                            value={formData.gymTime}
-                            onChange={e => setFormData({ ...formData, gymTime: e.target.value })}
-                            style={styles.input}
-                          />
-                        </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Notes (optional)</label>
-                          <textarea
-                            placeholder="e.g., 60 min, felt strong"
-                            value={formData.gymNotes}
-                            onChange={e => setFormData({ ...formData, gymNotes: e.target.value })}
-                            style={styles.textarea}
-                          />
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => {
-                              if (formData.gymActivity) {
-                                addEntry('gym', {
-                                  activity: formData.gymActivity,
-                                  notes: formData.gymNotes,
-                                  time: formData.gymTime || getCurrentTimeHHMM(),
-                                });
-                                setAddEntryType(null);
-                              }
-                            }}
-                            style={styles.button}
-                          >
-                            Log Gym Activity
-                          </button>
-                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
-                        </div>
-                      </>
-                    )}
-                    {addEntryType === 'medical' && (
-                      <>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Medical event</label>
-                          <input
-                            type="text"
-                            placeholder="e.g., Doctor visit, blood test, vaccination"
-                            value={formData.medicalEvent}
-                            onChange={e => setFormData({ ...formData, medicalEvent: e.target.value })}
-                            style={styles.input}
-                          />
-                        </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Notes (optional)</label>
-                          <textarea
-                            placeholder="e.g., Results showed..."
-                            value={formData.medicalNotes}
-                            onChange={e => setFormData({ ...formData, medicalNotes: e.target.value })}
-                            style={styles.textarea}
-                          />
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => {
-                              if (formData.medicalEvent) {
-                                addEntry('medical', {
-                                  event: formData.medicalEvent,
-                                  notes: formData.medicalNotes,
-                                  time: getCurrentTimeHHMM(),
-                                });
-                                setAddEntryType(null);
-                              }
-                            }}
-                            style={styles.button}
-                          >
-                            Log Medical Event
-                          </button>
-                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
+              {renderAddEntryCard()}
             </div>
           )}
 
@@ -2188,6 +2194,7 @@
                   <div style={styles.emptyState}>No entries yet. Start tracking!</div>
                 </div>
               )}
+              {renderAddEntryCard()}
             </div>
           )}
 
@@ -2352,76 +2359,92 @@
                         </div>
                       );
                     })}
+                  {!showAddRecurringSupp && (
+                    <div
+                      onClick={() => setShowAddRecurringSupp(true)}
+                      style={{ textAlign: 'center', color: '#666', fontWeight: '600', fontSize: '14px', cursor: 'pointer', marginTop: '0.5rem' }}
+                    >
+                      + Add Recurring Supplement
+                    </div>
+                  )}
                 </div>
               )}
 
-              <div style={styles.card}>
-                <div style={styles.cardTitle}>🔁 Add Recurring Supplement</div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Supplement name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Magnesium"
-                    value={formData.recurringName}
-                    onChange={e => setFormData({ ...formData, recurringName: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Frequency</label>
-                  <select
-                    value={formData.recurringFrequency}
-                    onChange={e => setFormData({ ...formData, recurringFrequency: e.target.value })}
-                    style={styles.select}
-                  >
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                  </select>
-                </div>
-                {formData.recurringFrequency === 'weekly' && (
+              {(showAddRecurringSupp || Object.keys(recurringSupps).length === 0) && (
+                <div style={styles.card}>
+                  <div style={styles.cardTitle}>🔁 Add Recurring Supplement</div>
                   <div style={styles.formGroup}>
-                    <label style={styles.label}>Day of week</label>
+                    <label style={styles.label}>Supplement name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Magnesium"
+                      value={formData.recurringName}
+                      onChange={e => setFormData({ ...formData, recurringName: e.target.value })}
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Frequency</label>
                     <select
-                      value={formData.recurringDayOfWeek}
-                      onChange={e => setFormData({ ...formData, recurringDayOfWeek: e.target.value })}
+                      value={formData.recurringFrequency}
+                      onChange={e => setFormData({ ...formData, recurringFrequency: e.target.value })}
                       style={styles.select}
                     >
-                      {dayNames.map((day, idx) => (
-                        <option key={idx} value={idx}>{day}</option>
-                      ))}
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
                     </select>
                   </div>
-                )}
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Time to remind me</label>
-                  <input
-                    type="time"
-                    value={formData.recurringTime}
-                    onChange={e => setFormData({ ...formData, recurringTime: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <button
-                  onClick={() => {
-                    if (formData.recurringName && formData.recurringTime) {
-                      setRecurringSupps(prev => ({
-                        ...prev,
-                        [Date.now()]: {
-                          id: Date.now(),
-                          name: formData.recurringName,
-                          time: formData.recurringTime,
-                          frequency: formData.recurringFrequency,
-                          dayOfWeek: formData.recurringFrequency === 'weekly' ? formData.recurringDayOfWeek : undefined,
+                  {formData.recurringFrequency === 'weekly' && (
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Day of week</label>
+                      <select
+                        value={formData.recurringDayOfWeek}
+                        onChange={e => setFormData({ ...formData, recurringDayOfWeek: e.target.value })}
+                        style={styles.select}
+                      >
+                        {dayNames.map((day, idx) => (
+                          <option key={idx} value={idx}>{day}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Time to remind me</label>
+                    <input
+                      type="time"
+                      value={formData.recurringTime}
+                      onChange={e => setFormData({ ...formData, recurringTime: e.target.value })}
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => {
+                        if (formData.recurringName && formData.recurringTime) {
+                          setRecurringSupps(prev => ({
+                            ...prev,
+                            [Date.now()]: {
+                              id: Date.now(),
+                              name: formData.recurringName,
+                              time: formData.recurringTime,
+                              frequency: formData.recurringFrequency,
+                              dayOfWeek: formData.recurringFrequency === 'weekly' ? formData.recurringDayOfWeek : undefined,
+                            }
+                          }));
+                          setFormData({ ...formData, recurringName: '', recurringTime: '', recurringFrequency: 'daily', recurringDayOfWeek: '1' });
+                          setShowAddRecurringSupp(false);
                         }
-                      }));
-                      setFormData({ ...formData, recurringName: '', recurringTime: '', recurringFrequency: 'daily', recurringDayOfWeek: '1' });
-                    }
-                  }}
-                  style={styles.button}
-                >
-                  Add Recurring Supplement
-                </button>
-              </div>
+                      }}
+                      style={styles.button}
+                    >
+                      Add Recurring Supplement
+                    </button>
+                    {Object.keys(recurringSupps).length > 0 && (
+                      <button onClick={() => setShowAddRecurringSupp(false)} style={styles.cancelButton}>Cancel</button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {Object.keys(recurringGym).length > 0 && (
                 <div style={styles.card}>
@@ -2517,76 +2540,92 @@
                         </div>
                       );
                     })}
+                  {!showAddRecurringGym && (
+                    <div
+                      onClick={() => setShowAddRecurringGym(true)}
+                      style={{ textAlign: 'center', color: '#666', fontWeight: '600', fontSize: '14px', cursor: 'pointer', marginTop: '0.5rem' }}
+                    >
+                      + Add Recurring Gym Activity
+                    </div>
+                  )}
                 </div>
               )}
 
-              <div style={styles.card}>
-                <div style={styles.cardTitle}>🔁 Add Recurring Gym Activity</div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Activity name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Planet Fitness — Leg Day"
-                    value={formData.recurringGymName}
-                    onChange={e => setFormData({ ...formData, recurringGymName: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Frequency</label>
-                  <select
-                    value={formData.recurringGymFrequency}
-                    onChange={e => setFormData({ ...formData, recurringGymFrequency: e.target.value })}
-                    style={styles.select}
-                  >
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                  </select>
-                </div>
-                {formData.recurringGymFrequency === 'weekly' && (
+              {(showAddRecurringGym || Object.keys(recurringGym).length === 0) && (
+                <div style={styles.card}>
+                  <div style={styles.cardTitle}>🔁 Add Recurring Gym Activity</div>
                   <div style={styles.formGroup}>
-                    <label style={styles.label}>Day of week</label>
+                    <label style={styles.label}>Activity name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Planet Fitness — Leg Day"
+                      value={formData.recurringGymName}
+                      onChange={e => setFormData({ ...formData, recurringGymName: e.target.value })}
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Frequency</label>
                     <select
-                      value={formData.recurringGymDayOfWeek}
-                      onChange={e => setFormData({ ...formData, recurringGymDayOfWeek: e.target.value })}
+                      value={formData.recurringGymFrequency}
+                      onChange={e => setFormData({ ...formData, recurringGymFrequency: e.target.value })}
                       style={styles.select}
                     >
-                      {dayNames.map((day, idx) => (
-                        <option key={idx} value={idx}>{day}</option>
-                      ))}
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
                     </select>
                   </div>
-                )}
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Time to remind me</label>
-                  <input
-                    type="time"
-                    value={formData.recurringGymTime}
-                    onChange={e => setFormData({ ...formData, recurringGymTime: e.target.value })}
-                    style={styles.input}
-                  />
-                </div>
-                <button
-                  onClick={() => {
-                    if (formData.recurringGymName && formData.recurringGymTime) {
-                      setRecurringGym(prev => ({
-                        ...prev,
-                        [Date.now()]: {
-                          id: Date.now(),
-                          name: formData.recurringGymName,
-                          time: formData.recurringGymTime,
-                          frequency: formData.recurringGymFrequency,
-                          dayOfWeek: formData.recurringGymFrequency === 'weekly' ? formData.recurringGymDayOfWeek : undefined,
+                  {formData.recurringGymFrequency === 'weekly' && (
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Day of week</label>
+                      <select
+                        value={formData.recurringGymDayOfWeek}
+                        onChange={e => setFormData({ ...formData, recurringGymDayOfWeek: e.target.value })}
+                        style={styles.select}
+                      >
+                        {dayNames.map((day, idx) => (
+                          <option key={idx} value={idx}>{day}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Time to remind me</label>
+                    <input
+                      type="time"
+                      value={formData.recurringGymTime}
+                      onChange={e => setFormData({ ...formData, recurringGymTime: e.target.value })}
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => {
+                        if (formData.recurringGymName && formData.recurringGymTime) {
+                          setRecurringGym(prev => ({
+                            ...prev,
+                            [Date.now()]: {
+                              id: Date.now(),
+                              name: formData.recurringGymName,
+                              time: formData.recurringGymTime,
+                              frequency: formData.recurringGymFrequency,
+                              dayOfWeek: formData.recurringGymFrequency === 'weekly' ? formData.recurringGymDayOfWeek : undefined,
+                            }
+                          }));
+                          setFormData({ ...formData, recurringGymName: '', recurringGymTime: '', recurringGymFrequency: 'daily', recurringGymDayOfWeek: '1' });
+                          setShowAddRecurringGym(false);
                         }
-                      }));
-                      setFormData({ ...formData, recurringGymName: '', recurringGymTime: '', recurringGymFrequency: 'daily', recurringGymDayOfWeek: '1' });
-                    }
-                  }}
-                  style={styles.button}
-                >
-                  Add Recurring Gym Activity
-                </button>
-              </div>
+                      }}
+                      style={styles.button}
+                    >
+                      Add Recurring Gym Activity
+                    </button>
+                    {Object.keys(recurringGym).length > 0 && (
+                      <button onClick={() => setShowAddRecurringGym(false)} style={styles.cancelButton}>Cancel</button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
