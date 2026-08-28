@@ -306,6 +306,33 @@
         return null;
       };
 
+      const buildDayItemsForHistory = (dayData, filterType) => {
+        const items = [];
+        const push = (category, icon, label, time, detail) => {
+          if (filterType !== 'all' && filterType !== category) return;
+          items.push({ category, icon, label, time: time || null, detail: detail || '' });
+        };
+
+        (dayData.supplements || []).forEach(e => push('supplements', '💊', e.name, e.time, e.notes));
+        (dayData.symptoms || []).forEach(e => push('symptoms', '🤒', `${e.symptom} — Level ${e.level}/5`, e.time, e.notes));
+        (dayData.food || []).forEach(e => push('food', '🍎', e.note, e.time, ''));
+        (dayData.gym || []).forEach(e => push('gym', '🏋️‍♀️', e.activity, e.time, e.notes));
+        (dayData.medical || []).forEach(e => push('medical', '⛑️', e.event, e.time, e.notes));
+        (dayData.weight || []).forEach(e => push('weight', '⚖️', `Weight: ${e.weight} kg`, e.time, e.target ? `Target: ${e.target} kg` : ''));
+        (dayData.fasting || []).forEach(e => {
+          const label = `Fasted ${e.start ? formatTime12h(e.start) : '?'} – ${e.end ? formatTime12h(e.end) : '?'}`;
+          push('fasting', '⏳', label, e.end, '');
+        });
+
+        items.sort((a, b) => {
+          if (!a.time && !b.time) return 0;
+          if (!a.time) return 1;
+          if (!b.time) return -1;
+          return a.time.localeCompare(b.time);
+        });
+        return items;
+      };
+
       const addEntry = (category, data) => {
         const timestamp = new Date().toLocaleTimeString('en-US', {
           hour: '2-digit',
@@ -375,6 +402,9 @@
       const [showWeightEntryForm, setShowWeightEntryForm] = useState(false);
       const [showAddRecurringSupp, setShowAddRecurringSupp] = useState(false);
       const [showAddRecurringGym, setShowAddRecurringGym] = useState(false);
+      const [historyTypeFilter, setHistoryTypeFilter] = useState('all');
+      const [historyDateFrom, setHistoryDateFrom] = useState('');
+      const [historyDateTo, setHistoryDateTo] = useState('');
 
       const flashSettingsSaved = (fieldKey) => {
         setSettingsSavedFlash(fieldKey);
@@ -1417,6 +1447,7 @@
               { key: 'plan', icon: '🎯', name: 'Plan for Today' },
               { key: 'timeline', icon: '🧾', name: 'Day Timeline' },
               { key: 'settings', icon: '🛠️', name: 'Settings' },
+              { key: 'history', icon: '📈', name: 'History' },
             ].map(tab => (
               <div
                 key={tab.key}
@@ -2626,6 +2657,127 @@
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* History Tab */}
+          {activeTab === 'history' && (
+            <div style={styles.content}>
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>🔍 Filters</div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Type</label>
+                  <select
+                    value={historyTypeFilter}
+                    onChange={e => setHistoryTypeFilter(e.target.value)}
+                    style={styles.select}
+                  >
+                    <option value="all">All types</option>
+                    <option value="symptoms">🤒 Symptoms</option>
+                    <option value="food">🍎 Food</option>
+                    <option value="supplements">💊 Supplements</option>
+                    <option value="gym">🏋️‍♀️ Gym</option>
+                    <option value="medical">⛑️ Medical</option>
+                    <option value="weight">⚖️ Weight</option>
+                    <option value="fasting">⏳ Fasting</option>
+                  </select>
+                </div>
+                <div style={styles.twoColumnForm}>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>From</label>
+                    <input
+                      type="date"
+                      value={historyDateFrom}
+                      onChange={e => setHistoryDateFrom(e.target.value)}
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>To</label>
+                    <input
+                      type="date"
+                      value={historyDateTo}
+                      onChange={e => setHistoryDateTo(e.target.value)}
+                      style={styles.input}
+                    />
+                  </div>
+                </div>
+                {(historyTypeFilter !== 'all' || historyDateFrom || historyDateTo) && (
+                  <div
+                    onClick={() => {
+                      setHistoryTypeFilter('all');
+                      setHistoryDateFrom('');
+                      setHistoryDateTo('');
+                    }}
+                    style={{ textAlign: 'center', color: '#666', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
+                  >
+                    Clear filters
+                  </div>
+                )}
+              </div>
+
+              {(() => {
+                const dates = Object.keys(entries)
+                  .filter(d => (!historyDateFrom || d >= historyDateFrom) && (!historyDateTo || d <= historyDateTo))
+                  .sort()
+                  .reverse();
+
+                const dayGroups = dates
+                  .map(d => ({ date: d, items: buildDayItemsForHistory(entries[d] || {}, historyTypeFilter) }))
+                  .filter(g => g.items.length > 0);
+
+                if (dayGroups.length === 0) {
+                  return (
+                    <div style={styles.card}>
+                      <div style={styles.emptyState}>No entries match these filters.</div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div style={styles.card}>
+                    {dayGroups.map(group => (
+                      <div key={group.date}>
+                        <div style={{ fontWeight: '700', fontSize: '15px', color: '#333', marginTop: '1.25rem', marginBottom: '0.25rem' }}>
+                          {parseLocalDate(group.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                        </div>
+                        {group.items.map((item, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => {
+                              setCurrentDate(group.date);
+                              setActiveTab('timeline');
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.6rem',
+                              padding: '0.6rem 0',
+                              borderBottom: '1px solid #eee',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <div style={{ fontSize: '16px', minWidth: '22px' }}>{item.icon}</div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '15px', fontWeight: '600', color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {item.label}
+                              </div>
+                              {item.detail && (
+                                <div style={{ fontSize: '12px', color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {item.detail}
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ fontSize: '13px', color: '#666', fontWeight: '600', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              {formatTime12h(item.time)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
