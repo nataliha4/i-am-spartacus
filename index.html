@@ -36,9 +36,10 @@
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useRef } = React;
 
     const DailyTrackerApp = () => {
       const [entries, setEntries] = useState({});
@@ -403,8 +404,84 @@
       const [showAddRecurringSupp, setShowAddRecurringSupp] = useState(false);
       const [showAddRecurringGym, setShowAddRecurringGym] = useState(false);
       const [historyTypeFilters, setHistoryTypeFilters] = useState([]);
-      const [historyDateFrom, setHistoryDateFrom] = useState('');
-      const [historyDateTo, setHistoryDateTo] = useState('');
+      const [historyDateFrom, setHistoryDateFrom] = useState(() => formatDateLocal(new Date()));
+      const [historyDateTo, setHistoryDateTo] = useState(() => formatDateLocal(new Date()));
+      const [historyView, setHistoryView] = useState('list');
+      const weightChartRef = useRef(null);
+      const weightChartInstanceRef = useRef(null);
+
+      useEffect(() => {
+        if (activeTab !== 'history' || historyView !== 'charts') return;
+        if (!weightChartRef.current) return;
+
+        const dates = Object.keys(entries)
+          .filter(d => (!historyDateFrom || d >= historyDateFrom) && (!historyDateTo || d <= historyDateTo))
+          .sort();
+
+        const labels = [];
+        const dataPoints = [];
+        dates.forEach(d => {
+          const dayWeights = entries[d] && entries[d].weight;
+          if (dayWeights && dayWeights.length > 0) {
+            const latest = dayWeights[dayWeights.length - 1];
+            labels.push(parseLocalDate(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            dataPoints.push(parseFloat(latest.weight));
+          }
+        });
+
+        if (weightChartInstanceRef.current) {
+          weightChartInstanceRef.current.destroy();
+          weightChartInstanceRef.current = null;
+        }
+
+        if (dataPoints.length === 0) return;
+
+        const target = appSettings.targetWeight ? parseFloat(appSettings.targetWeight) : null;
+        const datasets = [
+          {
+            label: 'Weight (kg)',
+            data: dataPoints,
+            borderColor: '#333',
+            backgroundColor: 'rgba(51, 51, 51, 0.1)',
+            tension: 0.3,
+            pointRadius: 4,
+            pointBackgroundColor: '#333',
+            fill: true,
+          },
+        ];
+        if (target !== null) {
+          datasets.push({
+            label: 'Target',
+            data: labels.map(() => target),
+            borderColor: '#27ae60',
+            borderDash: [6, 6],
+            pointRadius: 0,
+            fill: false,
+          });
+        }
+
+        weightChartInstanceRef.current = new Chart(weightChartRef.current, {
+          type: 'line',
+          data: { labels, datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: target !== null, position: 'bottom' },
+            },
+            scales: {
+              y: { ticks: { callback: v => `${v} kg` } },
+            },
+          },
+        });
+
+        return () => {
+          if (weightChartInstanceRef.current) {
+            weightChartInstanceRef.current.destroy();
+            weightChartInstanceRef.current = null;
+          }
+        };
+      }, [activeTab, historyView, entries, historyDateFrom, historyDateTo, appSettings.targetWeight]);
 
       const flashSettingsSaved = (fieldKey) => {
         setSettingsSavedFlash(fieldKey);
@@ -2782,51 +2859,92 @@
           {/* History Tab */}
           {activeTab === 'history' && (
             <div style={styles.content}>
+              <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                <div
+                  role="button"
+                  onClick={() => setHistoryView('list')}
+                  style={{
+                    flex: 1,
+                    textAlign: 'center',
+                    padding: '0.9rem',
+                    borderRadius: '8px',
+                    fontWeight: '700',
+                    fontSize: '16px',
+                    cursor: 'pointer',
+                    backgroundColor: historyView === 'list' ? '#333' : '#fff',
+                    color: historyView === 'list' ? '#fff' : '#333',
+                    border: `2px solid ${historyView === 'list' ? '#333' : '#e0e0e0'}`,
+                  }}
+                >
+                  📃 List
+                </div>
+                <div
+                  role="button"
+                  onClick={() => setHistoryView('charts')}
+                  style={{
+                    flex: 1,
+                    textAlign: 'center',
+                    padding: '0.9rem',
+                    borderRadius: '8px',
+                    fontWeight: '700',
+                    fontSize: '16px',
+                    cursor: 'pointer',
+                    backgroundColor: historyView === 'charts' ? '#333' : '#fff',
+                    color: historyView === 'charts' ? '#fff' : '#333',
+                    border: `2px solid ${historyView === 'charts' ? '#333' : '#e0e0e0'}`,
+                  }}
+                >
+                  📊 Charts
+                </div>
+              </div>
+
               <div style={styles.card}>
                 <div style={styles.cardTitle}>🔍 Filters</div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Type</label>
-                  <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-                    {[
-                      { type: 'symptoms', icon: '🤒', label: 'Symptom' },
-                      { type: 'food', icon: '🍎', label: 'Food' },
-                      { type: 'supplements', icon: '💊', label: 'Supplement' },
-                      { type: 'gym', icon: '🏋️‍♀️', label: 'Gym' },
-                      { type: 'medical', icon: '⛑️', label: 'Medical' },
-                      { type: 'weight', icon: '⚖️', label: 'Weight' },
-                      { type: 'fasting', icon: '⏳', label: 'Fasting' },
-                    ].map(opt => {
-                      const selected = historyTypeFilters.includes(opt.type);
-                      return (
-                        <div
-                          key={opt.type}
-                          role="button"
-                          onClick={() => {
-                            setHistoryTypeFilters(prev =>
-                              selected ? prev.filter(t => t !== opt.type) : [...prev, opt.type]
-                            );
-                          }}
-                          style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: '0.3rem',
-                            padding: '0.75rem 0.4rem',
-                            border: selected ? '2px solid #333' : '2px solid #e0e0e0',
-                            backgroundColor: selected ? '#333' : '#fff',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            minWidth: '68px',
-                            flex: '1 1 68px',
-                          }}
-                        >
-                          <div style={{ fontSize: '22px' }}>{opt.icon}</div>
-                          <div style={{ fontSize: '11px', fontWeight: '600', color: selected ? '#fff' : '#333' }}>{opt.label}</div>
-                        </div>
-                      );
-                    })}
+                {historyView === 'list' && (
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Type</label>
+                    <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                      {[
+                        { type: 'symptoms', icon: '🤒', label: 'Symptom' },
+                        { type: 'food', icon: '🍎', label: 'Food' },
+                        { type: 'supplements', icon: '💊', label: 'Supplement' },
+                        { type: 'gym', icon: '🏋️‍♀️', label: 'Gym' },
+                        { type: 'medical', icon: '⛑️', label: 'Medical' },
+                        { type: 'weight', icon: '⚖️', label: 'Weight' },
+                        { type: 'fasting', icon: '⏳', label: 'Fasting' },
+                      ].map(opt => {
+                        const selected = historyTypeFilters.includes(opt.type);
+                        return (
+                          <div
+                            key={opt.type}
+                            role="button"
+                            onClick={() => {
+                              setHistoryTypeFilters(prev =>
+                                selected ? prev.filter(t => t !== opt.type) : [...prev, opt.type]
+                              );
+                            }}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: '0.3rem',
+                              padding: '0.75rem 0.4rem',
+                              border: selected ? '2px solid #333' : '2px solid #e0e0e0',
+                              backgroundColor: selected ? '#333' : '#fff',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              minWidth: '68px',
+                              flex: '1 1 68px',
+                            }}
+                          >
+                            <div style={{ fontSize: '22px' }}>{opt.icon}</div>
+                            <div style={{ fontSize: '11px', fontWeight: '600', color: selected ? '#fff' : '#333' }}>{opt.label}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
                 <div style={styles.twoColumnForm}>
                   <div style={styles.formGroup}>
                     <label style={styles.label}>From</label>
@@ -2847,21 +2965,26 @@
                     />
                   </div>
                 </div>
-                {(historyTypeFilters.length > 0 || historyDateFrom || historyDateTo) && (
-                  <div
-                    onClick={() => {
-                      setHistoryTypeFilters([]);
-                      setHistoryDateFrom('');
-                      setHistoryDateTo('');
-                    }}
-                    style={{ textAlign: 'center', color: '#666', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
-                  >
-                    Clear filters
-                  </div>
-                )}
+                {(() => {
+                  const today = formatDateLocal(new Date());
+                  const isDefault = historyTypeFilters.length === 0 && historyDateFrom === today && historyDateTo === today;
+                  if (isDefault) return null;
+                  return (
+                    <div
+                      onClick={() => {
+                        setHistoryTypeFilters([]);
+                        setHistoryDateFrom(today);
+                        setHistoryDateTo(today);
+                      }}
+                      style={{ textAlign: 'center', color: '#666', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
+                    >
+                      Reset filters
+                    </div>
+                  );
+                })()}
               </div>
 
-              {(() => {
+              {historyView === 'list' && (() => {
                 const dates = Object.keys(entries)
                   .filter(d => (!historyDateFrom || d >= historyDateFrom) && (!historyDateTo || d <= historyDateTo))
                   .sort()
@@ -2923,6 +3046,28 @@
                   </div>
                 );
               })()}
+
+              {historyView === 'charts' && (
+                <div style={styles.card}>
+                  <div style={styles.cardTitle}>⚖️ Weight Trend</div>
+                  {(() => {
+                    const hasData = Object.keys(entries).some(d => {
+                      if (historyDateFrom && d < historyDateFrom) return false;
+                      if (historyDateTo && d > historyDateTo) return false;
+                      const w = entries[d] && entries[d].weight;
+                      return w && w.length > 0;
+                    });
+                    if (!hasData) {
+                      return <div style={styles.emptyState}>No weight entries in this date range yet.</div>;
+                    }
+                    return (
+                      <div style={{ position: 'relative', height: '280px' }}>
+                        <canvas ref={weightChartRef}></canvas>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           )}
         </div>
