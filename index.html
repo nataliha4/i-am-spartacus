@@ -1704,6 +1704,125 @@
                 })()}
               </div>
 
+              {(() => {
+                const now = new Date();
+                const nowTotalMin = now.getHours() * 60 + now.getMinutes();
+
+                const upcomingItems = [
+                  ...Object.values(recurringSupps).filter(isSuppScheduledToday).map(s => ({ item: s, type: 'supplement' })),
+                  ...Object.values(recurringGym).filter(isSuppScheduledToday).map(g => ({ item: g, type: 'gym' })),
+                ].filter(({ item, type }) => {
+                  const isSupp = type === 'supplement';
+                  const done = isSupp ? isRecurringDone(item) : isRecurringGymDone(item);
+                  const failedKey = isSupp ? `recurring-${item.id}` : `recurring-gym-${item.id}`;
+                  const failed = isRecurringFailed(failedKey);
+                  if (done || failed) return false;
+                  if (!item.time) return false;
+                  const [h, m] = item.time.split(':').map(Number);
+                  const scheduledMin = h * 60 + m;
+                  return (scheduledMin - nowTotalMin) <= 60;
+                }).sort((a, b) => (a.item.time || '').localeCompare(b.item.time || ''));
+
+                if (upcomingItems.length === 0) return null;
+
+                return (
+                  <div style={styles.card}>
+                    <div style={styles.cardTitle}>🔔 Upcoming</div>
+                    {upcomingItems.map(({ item, type }) => {
+                      const isSupp = type === 'supplement';
+                      const typeIcon = isSupp ? '💊' : '🏋️‍♀️';
+                      const failedKey = isSupp ? `recurring-${item.id}` : `recurring-gym-${item.id}`;
+                      const confirmingId = isSupp ? confirmingSuppId : confirmingGymId;
+                      const setConfirmingId = isSupp ? setConfirmingSuppId : setConfirmingGymId;
+                      const confirmTimeVal = isSupp ? confirmTime : confirmGymTime;
+                      const setConfirmTimeVal = isSupp ? setConfirmTime : setConfirmGymTime;
+                      const onConfirmDone = isSupp ? confirmRecurringDone : confirmRecurringGymDone;
+                      const isConfirming = confirmingId === item.id;
+
+                      const [h, m] = item.time.split(':').map(Number);
+                      const scheduledMin = h * 60 + m;
+                      const overdue = scheduledMin < nowTotalMin;
+
+                      if (isConfirming) {
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              padding: '1rem 1.25rem',
+                              backgroundColor: '#fff',
+                              border: '2px solid #333',
+                              borderRadius: '8px',
+                              marginBottom: '0.75rem',
+                            }}
+                          >
+                            <div style={{ fontWeight: '600', fontSize: '17px', marginBottom: '0.75rem' }}>
+                              {typeIcon} {item.name}
+                            </div>
+                            <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
+                            <input
+                              type="time"
+                              value={confirmTimeVal}
+                              onChange={e => setConfirmTimeVal(e.target.value)}
+                              style={styles.editInput}
+                            />
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                              <button
+                                onClick={() => {
+                                  onConfirmDone(item, confirmTimeVal);
+                                  setConfirmingId(null);
+                                }}
+                                style={styles.saveButton}
+                              >
+                                Confirm
+                              </button>
+                              <button onClick={() => setConfirmingId(null)} style={styles.cancelButton}>Cancel</button>
+                              <span
+                                onClick={() => {
+                                  markRecurringFailed(failedKey);
+                                  setConfirmingId(null);
+                                }}
+                                style={{ color: '#e74c3c', fontWeight: '700', fontSize: '15px', cursor: 'pointer', marginLeft: 'auto' }}
+                              >
+                                Mark as Failed
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            setConfirmingId(item.id);
+                            setConfirmTimeVal(getCurrentTimeHHMM());
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '1rem 1.25rem',
+                            backgroundColor: overdue ? '#fdecea' : '#fff3cd',
+                            border: `2px solid ${overdue ? '#e74c3c' : '#f39c12'}`,
+                            borderRadius: '8px',
+                            marginBottom: '0.75rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <div style={{ fontSize: '18px' }}>{typeIcon}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: '600', fontSize: '17px', color: '#333' }}>{item.name}</div>
+                          </div>
+                          <div style={{ fontSize: '14px', color: overdue ? '#c0392b' : '#856404', fontWeight: '600' }}>
+                            {overdue ? `Overdue · ${formatTime12h(item.time)}` : formatTime12h(item.time)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
               {renderAddEntryCard()}
             </div>
           )}
