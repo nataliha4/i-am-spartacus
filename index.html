@@ -471,6 +471,14 @@
             },
             scales: {
               y: { ticks: { callback: v => `${v} kg` } },
+              x: {
+                ticks: {
+                  autoSkip: true,
+                  maxTicksLimit: 10,
+                  maxRotation: 45,
+                  minRotation: 0,
+                },
+              },
             },
           },
         });
@@ -2952,7 +2960,7 @@
                       type="date"
                       value={historyDateFrom}
                       onChange={e => setHistoryDateFrom(e.target.value)}
-                      style={styles.input}
+                      style={{ ...styles.input, fontSize: '15px', padding: '0.75rem 0.5rem' }}
                     />
                   </div>
                   <div style={styles.formGroup}>
@@ -2961,7 +2969,7 @@
                       type="date"
                       value={historyDateTo}
                       onChange={e => setHistoryDateTo(e.target.value)}
-                      style={styles.input}
+                      style={{ ...styles.input, fontSize: '15px', padding: '0.75rem 0.5rem' }}
                     />
                   </div>
                 </div>
