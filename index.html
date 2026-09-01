@@ -404,7 +404,11 @@
       const [showAddRecurringSupp, setShowAddRecurringSupp] = useState(false);
       const [showAddRecurringGym, setShowAddRecurringGym] = useState(false);
       const [historyTypeFilters, setHistoryTypeFilters] = useState([]);
-      const [historyDateFrom, setHistoryDateFrom] = useState(() => formatDateLocal(new Date()));
+      const [historyDateFrom, setHistoryDateFrom] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 7);
+        return formatDateLocal(d);
+      });
       const [historyDateTo, setHistoryDateTo] = useState(() => formatDateLocal(new Date()));
       const [historyView, setHistoryView] = useState('list');
       const weightChartRef = useRef(null);
@@ -2975,13 +2979,16 @@
                 </div>
                 {(() => {
                   const today = formatDateLocal(new Date());
-                  const isDefault = historyTypeFilters.length === 0 && historyDateFrom === today && historyDateTo === today;
+                  const sevenDaysAgoDate = new Date();
+                  sevenDaysAgoDate.setDate(sevenDaysAgoDate.getDate() - 7);
+                  const sevenDaysAgo = formatDateLocal(sevenDaysAgoDate);
+                  const isDefault = historyTypeFilters.length === 0 && historyDateFrom === sevenDaysAgo && historyDateTo === today;
                   if (isDefault) return null;
                   return (
                     <div
                       onClick={() => {
                         setHistoryTypeFilters([]);
-                        setHistoryDateFrom(today);
+                        setHistoryDateFrom(sevenDaysAgo);
                         setHistoryDateTo(today);
                       }}
                       style={{ textAlign: 'center', color: '#666', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
