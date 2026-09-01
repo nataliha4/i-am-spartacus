@@ -1644,33 +1644,66 @@
                         );
                       })()}
 
-                      {fastingStatus && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <span>
-                            <strong style={{ fontSize: '17px' }}>Fasted:</strong> {fastingStatus.hours}h ({formatTime12h(fastingStatus.start)} – {formatTime12h(fastingStatus.end)})
-                          </span>
-                          {fastingStatus.hours >= (appSettings.fastingGoalHours || 16) ? (
-                            <span style={{ fontSize: '18px' }}>✅</span>
-                          ) : (
-                            <span style={{ color: '#f39c12', fontSize: '14px', fontWeight: '600' }}>
-                              · {((appSettings.fastingGoalHours || 16) - fastingStatus.hours).toFixed(1)}h to goal
-                            </span>
-                          )}
-                        </div>
-                      )}
+                      {fastingStatus ? (
+                        (() => {
+                          const goalHours = appSettings.fastingGoalHours || 16;
+                          const percent = Math.round((fastingStatus.hours / goalHours) * 100);
+                          const percentColor = percent >= 100 ? '#27ae60' : '#f39c12';
+                          const next = getNextFastPrediction();
+                          const urgencyColors = { green: '#27ae60', yellow: '#f39c12', red: '#e74c3c' };
+                          const nextColor = urgencyColors[next.urgency];
+                          const nextBig = next.isOverdue
+                            ? 'Overdue'
+                            : `${next.hoursPart}h ${next.minutesPart}m`;
+                          const nextSub = next.isOverdue
+                            ? `${next.hoursPart}h ${next.minutesPart}m past ${formatTime12h(next.time)}`
+                            : `at ${formatTime12h(next.time)}`;
 
-                      {(() => {
-                        const next = getNextFastPrediction();
-                        const urgencyColors = { green: '#27ae60', yellow: '#f39c12', red: '#e74c3c' };
-                        const urgencyColor = urgencyColors[next.urgency];
-                        return (
-                          <div style={{ color: urgencyColor, fontWeight: '600', fontSize: '15px' }}>
-                            {next.isOverdue
-                              ? `You're ${next.hoursPart}h ${next.minutesPart}min past your eating window!`
-                              : `Next fast starts at ${formatTime12h(next.time)} (in ${next.hoursPart}h ${next.minutesPart}min)`}
-                          </div>
-                        );
-                      })()}
+                          return (
+                            <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                              <div>
+                                <div style={{ fontSize: '26px', fontWeight: '700', color: '#333' }}>{fastingStatus.hours}h</div>
+                                <div style={{ fontSize: '12px', color: '#666', marginTop: '0.2rem' }}>Last Fast</div>
+                                <div style={{ fontSize: '11px', color: '#999', marginTop: '0.1rem' }}>
+                                  {formatTime12h(fastingStatus.start)} – {formatTime12h(fastingStatus.end)}
+                                </div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '26px', fontWeight: '700', color: percentColor }}>{percent}%</div>
+                                <div style={{ fontSize: '12px', color: '#666', marginTop: '0.2rem' }}>Goal Progress</div>
+                                <div style={{ fontSize: '11px', color: '#999', marginTop: '0.1rem' }}>
+                                  {fastingStatus.hours}h / {goalHours}h
+                                </div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '26px', fontWeight: '700', color: nextColor }}>{nextBig}</div>
+                                <div style={{ fontSize: '12px', color: '#666', marginTop: '0.2rem' }}>Next Fast</div>
+                                <div style={{ fontSize: '11px', color: '#999', marginTop: '0.1rem' }}>{nextSub}</div>
+                              </div>
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        (() => {
+                          const next = getNextFastPrediction();
+                          const urgencyColors = { green: '#27ae60', yellow: '#f39c12', red: '#e74c3c' };
+                          const nextColor = urgencyColors[next.urgency];
+                          const nextBig = next.isOverdue
+                            ? 'Overdue'
+                            : `${next.hoursPart}h ${next.minutesPart}m`;
+                          const nextSub = next.isOverdue
+                            ? `${next.hoursPart}h ${next.minutesPart}m past ${formatTime12h(next.time)}`
+                            : `at ${formatTime12h(next.time)}`;
+                          return (
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ fontSize: '13px', color: '#999', marginBottom: '0.5rem' }}>No fast logged today yet</div>
+                              <div style={{ fontSize: '28px', fontWeight: '700', color: nextColor }}>{nextBig}</div>
+                              <div style={{ fontSize: '12px', color: '#666', marginTop: '0.2rem' }}>Next Fast</div>
+                              <div style={{ fontSize: '11px', color: '#999', marginTop: '0.1rem' }}>{nextSub}</div>
+                            </div>
+                          );
+                        })()
+                      )}
                     </div>
                   )}
                 </div>
