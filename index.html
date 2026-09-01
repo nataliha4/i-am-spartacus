@@ -1270,15 +1270,6 @@
                             style={styles.textarea}
                           />
                         </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Time (optional)</label>
-                          <input
-                            type="time"
-                            value={formData.foodTime}
-                            onChange={e => setFormData({ ...formData, foodTime: e.target.value })}
-                            style={styles.input}
-                          />
-                        </div>
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <button
                             onClick={() => {
@@ -1307,15 +1298,6 @@
                             placeholder="e.g., Magnesium"
                             value={formData.supplement}
                             onChange={e => setFormData({ ...formData, supplement: e.target.value })}
-                            style={styles.input}
-                          />
-                        </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Time taken</label>
-                          <input
-                            type="time"
-                            value={formData.supplementTime}
-                            onChange={e => setFormData({ ...formData, supplementTime: e.target.value })}
                             style={styles.input}
                           />
                         </div>
@@ -1357,15 +1339,6 @@
                             placeholder="e.g., Planet Fitness — Chest & Triceps"
                             value={formData.gymActivity}
                             onChange={e => setFormData({ ...formData, gymActivity: e.target.value })}
-                            style={styles.input}
-                          />
-                        </div>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Time (optional)</label>
-                          <input
-                            type="time"
-                            value={formData.gymTime}
-                            onChange={e => setFormData({ ...formData, gymTime: e.target.value })}
                             style={styles.input}
                           />
                         </div>
