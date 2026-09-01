@@ -413,6 +413,8 @@
       const [historyView, setHistoryView] = useState('list');
       const weightChartRef = useRef(null);
       const weightChartInstanceRef = useRef(null);
+      const fastingChartRef = useRef(null);
+      const fastingChartInstanceRef = useRef(null);
 
       useEffect(() => {
         if (activeTab !== 'history' || historyView !== 'charts') return;
@@ -494,6 +496,90 @@
           }
         };
       }, [activeTab, historyView, entries, historyDateFrom, historyDateTo, appSettings.targetWeight]);
+
+      useEffect(() => {
+        if (activeTab !== 'history' || historyView !== 'charts') return;
+        if (!fastingChartRef.current) return;
+
+        const dates = Object.keys(entries)
+          .filter(d => (!historyDateFrom || d >= historyDateFrom) && (!historyDateTo || d <= historyDateTo))
+          .sort();
+
+        const goalHours = appSettings.fastingGoalHours || 16;
+        const labels = [];
+        const dataPoints = [];
+        dates.forEach(d => {
+          const dayFasts = entries[d] && entries[d].fasting;
+          if (dayFasts && dayFasts.length > 0) {
+            let totalHours = 0;
+            dayFasts.forEach(f => {
+              if (!f.start || !f.end) return;
+              const [sh, sm] = f.start.split(':').map(Number);
+              const [eh, em] = f.end.split(':').map(Number);
+              totalHours += ((eh * 60 + em) - (sh * 60 + sm) + 1440) % 1440 / 60;
+            });
+            labels.push(parseLocalDate(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            dataPoints.push(Math.round(totalHours * 10) / 10);
+          }
+        });
+
+        if (fastingChartInstanceRef.current) {
+          fastingChartInstanceRef.current.destroy();
+          fastingChartInstanceRef.current = null;
+        }
+
+        if (dataPoints.length === 0) return;
+
+        const barColors = dataPoints.map(h => (h >= goalHours ? '#27ae60' : '#f39c12'));
+
+        fastingChartInstanceRef.current = new Chart(fastingChartRef.current, {
+          data: {
+            labels,
+            datasets: [
+              {
+                type: 'bar',
+                label: 'Hours Fasted',
+                data: dataPoints,
+                backgroundColor: barColors,
+              },
+              {
+                type: 'line',
+                label: `Goal (${goalHours}h)`,
+                data: labels.map(() => goalHours),
+                borderColor: '#333',
+                borderDash: [6, 6],
+                pointRadius: 0,
+                fill: false,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: true, position: 'bottom' },
+            },
+            scales: {
+              y: { ticks: { callback: v => `${v}h` } },
+              x: {
+                ticks: {
+                  autoSkip: true,
+                  maxTicksLimit: 10,
+                  maxRotation: 45,
+                  minRotation: 0,
+                },
+              },
+            },
+          },
+        });
+
+        return () => {
+          if (fastingChartInstanceRef.current) {
+            fastingChartInstanceRef.current.destroy();
+            fastingChartInstanceRef.current = null;
+          }
+        };
+      }, [activeTab, historyView, entries, historyDateFrom, historyDateTo, appSettings.fastingGoalHours]);
 
       const flashSettingsSaved = (fieldKey) => {
         setSettingsSavedFlash(fieldKey);
@@ -3084,6 +3170,28 @@
                     return (
                       <div style={{ position: 'relative', height: '280px' }}>
                         <canvas ref={weightChartRef}></canvas>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {historyView === 'charts' && (
+                <div style={styles.card}>
+                  <div style={styles.cardTitle}>⏳ Fasting Duration</div>
+                  {(() => {
+                    const hasData = Object.keys(entries).some(d => {
+                      if (historyDateFrom && d < historyDateFrom) return false;
+                      if (historyDateTo && d > historyDateTo) return false;
+                      const f = entries[d] && entries[d].fasting;
+                      return f && f.length > 0;
+                    });
+                    if (!hasData) {
+                      return <div style={styles.emptyState}>No fasting entries in this date range yet.</div>;
+                    }
+                    return (
+                      <div style={{ position: 'relative', height: '280px' }}>
+                        <canvas ref={fastingChartRef}></canvas>
                       </div>
                     );
                   })()}
