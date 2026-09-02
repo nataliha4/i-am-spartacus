@@ -70,6 +70,7 @@
         foodTime: '',
         medicalEvent: '',
         medicalNotes: '',
+        medicalTime: '',
         gymActivity: '',
         gymNotes: '',
         gymTime: '',
@@ -369,6 +370,7 @@
           foodTime: '',
           medicalEvent: '',
           medicalNotes: '',
+          medicalTime: '',
           gymActivity: '',
           gymNotes: '',
           gymTime: '',
@@ -1232,7 +1234,9 @@
         },
       };
 
-      const renderAddEntryCard = () => (
+      const renderAddEntryCard = () => {
+        const isViewingToday = currentDate === formatDateLocal(new Date());
+        return (
               <div style={styles.card}>
                 <div style={styles.cardTitle}>➕ Add Entry</div>
                 {!addEntryType ? (
@@ -1294,16 +1298,7 @@
                             Level: {formData.symptomLevel} / 5
                           </div>
                         </div>
-                        <div style={styles.twoColumnForm}>
-                          <div style={styles.formGroup}>
-                            <label style={styles.label}>Date</label>
-                            <input
-                              type="date"
-                              value={formData.symptomDate}
-                              onChange={e => setFormData({ ...formData, symptomDate: e.target.value })}
-                              style={styles.input}
-                            />
-                          </div>
+                        {!isViewingToday && (
                           <div style={styles.formGroup}>
                             <label style={styles.label}>Time</label>
                             <input
@@ -1313,7 +1308,7 @@
                               style={styles.input}
                             />
                           </div>
-                        </div>
+                        )}
                         <div style={styles.formGroup}>
                           <label style={styles.label}>Notes (optional)</label>
                           <textarea
@@ -1331,7 +1326,7 @@
                                   symptom: formData.symptom,
                                   level: formData.symptomLevel,
                                   notes: formData.symptomNotes,
-                                  date: formData.symptomDate || currentDate,
+                                  date: currentDate,
                                   time: formData.symptomTime || getCurrentTimeHHMM(),
                                 });
                                 setAddEntryType(null);
@@ -1356,6 +1351,17 @@
                             style={styles.textarea}
                           />
                         </div>
+                        {!isViewingToday && (
+                          <div style={styles.formGroup}>
+                            <label style={styles.label}>Time</label>
+                            <input
+                              type="time"
+                              value={formData.foodTime}
+                              onChange={e => setFormData({ ...formData, foodTime: e.target.value })}
+                              style={styles.input}
+                            />
+                          </div>
+                        )}
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <button
                             onClick={() => {
@@ -1387,6 +1393,17 @@
                             style={styles.input}
                           />
                         </div>
+                        {!isViewingToday && (
+                          <div style={styles.formGroup}>
+                            <label style={styles.label}>Time</label>
+                            <input
+                              type="time"
+                              value={formData.supplementTime}
+                              onChange={e => setFormData({ ...formData, supplementTime: e.target.value })}
+                              style={styles.input}
+                            />
+                          </div>
+                        )}
                         <div style={styles.formGroup}>
                           <label style={styles.label}>Notes (optional)</label>
                           <textarea
@@ -1428,6 +1445,17 @@
                             style={styles.input}
                           />
                         </div>
+                        {!isViewingToday && (
+                          <div style={styles.formGroup}>
+                            <label style={styles.label}>Time</label>
+                            <input
+                              type="time"
+                              value={formData.gymTime}
+                              onChange={e => setFormData({ ...formData, gymTime: e.target.value })}
+                              style={styles.input}
+                            />
+                          </div>
+                        )}
                         <div style={styles.formGroup}>
                           <label style={styles.label}>Notes (optional)</label>
                           <textarea
@@ -1469,6 +1497,17 @@
                             style={styles.input}
                           />
                         </div>
+                        {!isViewingToday && (
+                          <div style={styles.formGroup}>
+                            <label style={styles.label}>Time</label>
+                            <input
+                              type="time"
+                              value={formData.medicalTime}
+                              onChange={e => setFormData({ ...formData, medicalTime: e.target.value })}
+                              style={styles.input}
+                            />
+                          </div>
+                        )}
                         <div style={styles.formGroup}>
                           <label style={styles.label}>Notes (optional)</label>
                           <textarea
@@ -1485,7 +1524,7 @@
                                 addEntry('medical', {
                                   event: formData.medicalEvent,
                                   notes: formData.medicalNotes,
-                                  time: getCurrentTimeHHMM(),
+                                  time: formData.medicalTime || getCurrentTimeHHMM(),
                                 });
                                 setAddEntryType(null);
                               }
@@ -1502,6 +1541,7 @@
                 )}
               </div>
       );
+      };
 
       return (
         <div style={styles.container}>
