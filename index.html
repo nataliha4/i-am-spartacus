@@ -68,6 +68,7 @@
         targetWeight: '',
         foodNote: '',
         foodTime: '',
+        foodNotes: '',
         medicalEvent: '',
         medicalNotes: '',
         medicalTime: '',
@@ -317,7 +318,7 @@
 
         (dayData.supplements || []).forEach(e => push('supplements', '💊', e.name, e.time, e.notes));
         (dayData.symptoms || []).forEach(e => push('symptoms', '🤒', `${e.symptom} — Level ${e.level}/5`, e.time, e.notes));
-        (dayData.food || []).forEach(e => push('food', '🍎', e.note, e.time, ''));
+        (dayData.food || []).forEach(e => push('food', '🍎', e.note, e.time, e.notes));
         (dayData.gym || []).forEach(e => push('gym', '🏋️‍♀️', e.activity, e.time, e.notes));
         (dayData.medical || []).forEach(e => push('medical', '⛑️', e.event, e.time, e.notes));
         (dayData.weight || []).forEach(e => push('weight', '⚖️', `Weight: ${e.weight} kg`, e.time, e.target ? `Target: ${e.target} kg` : ''));
@@ -368,6 +369,7 @@
           targetWeight: '',
           foodNote: '',
           foodTime: '',
+          foodNotes: '',
           medicalEvent: '',
           medicalNotes: '',
           medicalTime: '',
@@ -889,7 +891,7 @@
             time: entry.time && entry.time !== 'No time set' ? entry.time : null,
             icon: '🍎',
             label: entry.note,
-            detail: '',
+            detail: entry.notes || '',
             category: 'food',
             entry: entry,
           });
@@ -1362,6 +1364,15 @@
                             />
                           </div>
                         )}
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Notes (optional)</label>
+                          <textarea
+                            placeholder="e.g., Felt bloated after"
+                            value={formData.foodNotes}
+                            onChange={e => setFormData({ ...formData, foodNotes: e.target.value })}
+                            style={styles.textarea}
+                          />
+                        </div>
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <button
                             onClick={() => {
@@ -1369,6 +1380,7 @@
                                 addEntry('food', {
                                   note: formData.foodNote,
                                   time: formData.foodTime || getCurrentTimeHHMM(),
+                                  notes: formData.foodNotes,
                                 });
                                 setAddEntryType(null);
                               }
@@ -2434,6 +2446,12 @@
                                   value={editData.time}
                                   onChange={e => setEditData({ ...editData, time: e.target.value })}
                                   style={styles.editInput}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>Notes</label>
+                                <textarea
+                                  value={editData.notes || ''}
+                                  onChange={e => setEditData({ ...editData, notes: e.target.value })}
+                                  style={{ ...styles.editInput, minHeight: '60px' }}
                                 />
                               </>
                             )}
