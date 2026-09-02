@@ -336,62 +336,59 @@
         return items;
       };
 
-      const computeFoodSymptomCorrelation = (dateFrom, dateTo, windowHours) => {
+      const getSymptomFoodContext = (dateFrom, dateTo, windowHours) => {
         const dates = Object.keys(entries)
           .filter(d => (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo))
-          .sort();
+          .sort()
+          .reverse();
 
-        const symptomCounts = {};
-        const totalCounts = {};
+        const dayGroups = [];
 
         dates.forEach(d => {
-          const dayData = entries[d] || {};
-          const foods = (dayData.food || []).filter(f => f.time && f.time !== 'No time set');
-          const symptoms = (dayData.symptoms || []).filter(s => s.time && s.time !== 'No time set');
+          const symptoms = (entries[d] && entries[d].symptoms || []).filter(s => s.time && s.time !== 'No time set');
+          if (symptoms.length === 0) return;
 
-          // Tally every food item's total occurrence (baseline), regardless of symptoms
-          foods.forEach(f => {
-            const foodItems = f.note.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-            foodItems.forEach(item => {
-              totalCounts[item] = (totalCounts[item] || 0) + 1;
-            });
-          });
+          const dayFoods = (entries[d] && entries[d].food || []).filter(f => f.time && f.time !== 'No time set');
 
-          // For each symptom, look back within the window and tally which food items preceded it
-          symptoms.forEach(symptom => {
-            const [sh, sm] = symptom.time.split(':').map(Number);
-            const symptomMin = sh * 60 + sm;
+          const prevDateObj = parseLocalDate(d);
+          prevDateObj.setDate(prevDateObj.getDate() - 1);
+          const prevDateKey = formatDateLocal(prevDateObj);
+          const prevDayFoods = (entries[prevDateKey] && entries[prevDateKey].food || []).filter(f => f.time && f.time !== 'No time set');
 
-            const seenThisSymptom = new Set();
-            foods.forEach(f => {
-              const [fh, fm] = f.time.split(':').map(Number);
-              const foodMin = fh * 60 + fm;
-              const diffMin = symptomMin - foodMin;
-              if (diffMin < 0 || diffMin > windowHours * 60) return;
+          const symptomRows = symptoms
+            .slice()
+            .sort((a, b) => a.time.localeCompare(b.time))
+            .map(symptom => {
+              const [sh, sm] = symptom.time.split(':').map(Number);
+              const symptomAbsMin = sh * 60 + sm;
 
-              const foodItems = f.note.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-              foodItems.forEach(item => {
-                // Count each food item at most once per symptom occurrence, even if eaten multiple times in the window
-                if (seenThisSymptom.has(item)) return;
-                seenThisSymptom.add(item);
-                symptomCounts[item] = (symptomCounts[item] || 0) + 1;
+              const candidates = [];
+
+              dayFoods.forEach(f => {
+                const [fh, fm] = f.time.split(':').map(Number);
+                const diffMin = symptomAbsMin - (fh * 60 + fm);
+                if (diffMin >= 0 && diffMin <= windowHours * 60) {
+                  candidates.push({ food: f, diffMin });
+                }
               });
+
+              prevDayFoods.forEach(f => {
+                const [fh, fm] = f.time.split(':').map(Number);
+                const diffMin = symptomAbsMin + (1440 - (fh * 60 + fm));
+                if (diffMin >= 0 && diffMin <= windowHours * 60) {
+                  candidates.push({ food: f, diffMin });
+                }
+              });
+
+              candidates.sort((a, b) => a.diffMin - b.diffMin);
+
+              return { symptom, precedingFoods: candidates };
             });
-          });
+
+          dayGroups.push({ date: d, symptomRows });
         });
 
-        const results = Object.keys(totalCounts)
-          .filter(item => totalCounts[item] >= 2)
-          .map(item => ({
-            item,
-            symptomCount: symptomCounts[item] || 0,
-            totalCount: totalCounts[item],
-            ratio: (symptomCounts[item] || 0) / totalCounts[item],
-          }))
-          .filter(r => r.symptomCount > 0)
-          .sort((a, b) => b.ratio - a.ratio || b.symptomCount - a.symptomCount);
-
-        return results;
+        return dayGroups;
       };
 
       const addEntry = (category, data) => {
@@ -3379,43 +3376,68 @@
                     </select>
                   </div>
                   {(() => {
-                    const results = computeFoodSymptomCorrelation(historyDateFrom, historyDateTo, correlationWindowHours);
-                    if (results.length === 0) {
+                    const dayGroups = getSymptomFoodContext(historyDateFrom, historyDateTo, correlationWindowHours);
+                    if (dayGroups.length === 0) {
                       return (
                         <div style={styles.emptyState}>
-                          Not enough overlapping food and symptom data in this range yet.
+                          No symptoms with a time logged in this range yet.
                         </div>
                       );
                     }
+
+                    const formatDuration = (diffMin) => {
+                      const h = Math.floor(diffMin / 60);
+                      const m = diffMin % 60;
+                      if (h === 0) return `${m}m before`;
+                      if (m === 0) return `${h}h before`;
+                      return `${h}h ${m}m before`;
+                    };
+
                     return (
                       <div>
-                        <div style={{ fontSize: '13px', color: '#666', marginBottom: '1rem' }}>
-                          How often each food item was logged shortly before a symptom, out of all the times you ate it.
-                        </div>
-                        {results.slice(0, 10).map((r, idx) => {
-                          const pct = Math.round(r.ratio * 100);
-                          const color = pct >= 60 ? '#e74c3c' : pct >= 35 ? '#f39c12' : '#666';
-                          return (
-                            <div
-                              key={idx}
-                              style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                padding: '0.75rem 0',
-                                borderBottom: '1px solid #eee',
-                              }}
-                            >
-                              <div style={{ fontSize: '16px', fontWeight: '600', color: '#333', textTransform: 'capitalize' }}>
-                                {r.item}
-                              </div>
-                              <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '18px', fontWeight: '700', color }}>{pct}%</div>
-                                <div style={{ fontSize: '11px', color: '#999' }}>{r.symptomCount} of {r.totalCount} times</div>
-                              </div>
+                        {dayGroups.map(group => (
+                          <div key={group.date}>
+                            <div style={{ fontWeight: '700', fontSize: '15px', color: '#333', marginTop: '1.25rem', marginBottom: '0.25rem' }}>
+                              {parseLocalDate(group.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
                             </div>
-                          );
-                        })}
+                            {group.symptomRows.map(({ symptom, precedingFoods }) => (
+                              <div key={symptom.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid #eee' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
+                                  <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>
+                                    🤒 {symptom.symptom} — Level {symptom.level}/5
+                                  </div>
+                                  <div style={{ fontSize: '14px', color: '#666', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                                    {formatTime12h(symptom.time)}
+                                  </div>
+                                </div>
+                                {precedingFoods.length === 0 ? (
+                                  <div style={{ fontSize: '13px', color: '#999', marginTop: '0.4rem', marginLeft: '1.5rem' }}>
+                                    No food logged in this window.
+                                  </div>
+                                ) : (
+                                  <div style={{ marginTop: '0.4rem', marginLeft: '1.5rem' }}>
+                                    {precedingFoods.map((c, idx) => (
+                                      <div
+                                        key={idx}
+                                        style={{
+                                          display: 'flex',
+                                          justifyContent: 'space-between',
+                                          gap: '0.75rem',
+                                          fontSize: '13px',
+                                          color: '#666',
+                                          marginBottom: '0.2rem',
+                                        }}
+                                      >
+                                        <span>🍎 {c.food.note}</span>
+                                        <span style={{ whiteSpace: 'nowrap', color: '#999' }}>{formatDuration(c.diffMin)}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ))}
                       </div>
                     );
                   })()}
