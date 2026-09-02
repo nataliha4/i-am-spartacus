@@ -336,7 +336,7 @@
         return items;
       };
 
-      const getSymptomFoodContext = (dateFrom, dateTo, windowHours) => {
+      const getSymptomFoodContext = (dateFrom, dateTo, windowHours, minSeverity) => {
         const dates = Object.keys(entries)
           .filter(d => (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo))
           .sort()
@@ -345,7 +345,7 @@
         const dayGroups = [];
 
         dates.forEach(d => {
-          const symptoms = (entries[d] && entries[d].symptoms || []).filter(s => s.time && s.time !== 'No time set');
+          const symptoms = (entries[d] && entries[d].symptoms || []).filter(s => s.time && s.time !== 'No time set' && s.level >= minSeverity);
           if (symptoms.length === 0) return;
 
           const dayFoods = (entries[d] && entries[d].food || []).filter(f => f.time && f.time !== 'No time set');
@@ -471,6 +471,7 @@
       const [historyDateTo, setHistoryDateTo] = useState(() => formatDateLocal(new Date()));
       const [historyView, setHistoryView] = useState('list');
       const [correlationWindowHours, setCorrelationWindowHours] = useState(6);
+      const [minSeverityFilter, setMinSeverityFilter] = useState(1);
       const weightChartRef = useRef(null);
       const weightChartInstanceRef = useRef(null);
       const fastingChartRef = useRef(null);
@@ -3375,8 +3376,22 @@
                       <option value={24}>Any time that day</option>
                     </select>
                   </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Minimum severity</label>
+                    <input
+                      type="range"
+                      min="1"
+                      max="5"
+                      value={minSeverityFilter}
+                      onChange={e => setMinSeverityFilter(parseInt(e.target.value))}
+                      style={{ width: '100%' }}
+                    />
+                    <div style={{ textAlign: 'center', fontSize: '13px', color: '#666', marginTop: '0.3rem' }}>
+                      Level: {minSeverityFilter}+ / 5
+                    </div>
+                  </div>
                   {(() => {
-                    const dayGroups = getSymptomFoodContext(historyDateFrom, historyDateTo, correlationWindowHours);
+                    const dayGroups = getSymptomFoodContext(historyDateFrom, historyDateTo, correlationWindowHours, minSeverityFilter);
                     if (dayGroups.length === 0) {
                       return (
                         <div style={styles.emptyState}>
