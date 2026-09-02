@@ -336,6 +336,64 @@
         return items;
       };
 
+      const computeFoodSymptomCorrelation = (dateFrom, dateTo, windowHours) => {
+        const dates = Object.keys(entries)
+          .filter(d => (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo))
+          .sort();
+
+        const symptomCounts = {};
+        const totalCounts = {};
+
+        dates.forEach(d => {
+          const dayData = entries[d] || {};
+          const foods = (dayData.food || []).filter(f => f.time && f.time !== 'No time set');
+          const symptoms = (dayData.symptoms || []).filter(s => s.time && s.time !== 'No time set');
+
+          // Tally every food item's total occurrence (baseline), regardless of symptoms
+          foods.forEach(f => {
+            const foodItems = f.note.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+            foodItems.forEach(item => {
+              totalCounts[item] = (totalCounts[item] || 0) + 1;
+            });
+          });
+
+          // For each symptom, look back within the window and tally which food items preceded it
+          symptoms.forEach(symptom => {
+            const [sh, sm] = symptom.time.split(':').map(Number);
+            const symptomMin = sh * 60 + sm;
+
+            const seenThisSymptom = new Set();
+            foods.forEach(f => {
+              const [fh, fm] = f.time.split(':').map(Number);
+              const foodMin = fh * 60 + fm;
+              const diffMin = symptomMin - foodMin;
+              if (diffMin < 0 || diffMin > windowHours * 60) return;
+
+              const foodItems = f.note.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+              foodItems.forEach(item => {
+                // Count each food item at most once per symptom occurrence, even if eaten multiple times in the window
+                if (seenThisSymptom.has(item)) return;
+                seenThisSymptom.add(item);
+                symptomCounts[item] = (symptomCounts[item] || 0) + 1;
+              });
+            });
+          });
+        });
+
+        const results = Object.keys(totalCounts)
+          .filter(item => totalCounts[item] >= 2)
+          .map(item => ({
+            item,
+            symptomCount: symptomCounts[item] || 0,
+            totalCount: totalCounts[item],
+            ratio: (symptomCounts[item] || 0) / totalCounts[item],
+          }))
+          .filter(r => r.symptomCount > 0)
+          .sort((a, b) => b.ratio - a.ratio || b.symptomCount - a.symptomCount);
+
+        return results;
+      };
+
       const addEntry = (category, data) => {
         const timestamp = new Date().toLocaleTimeString('en-US', {
           hour: '2-digit',
@@ -415,6 +473,7 @@
       });
       const [historyDateTo, setHistoryDateTo] = useState(() => formatDateLocal(new Date()));
       const [historyView, setHistoryView] = useState('list');
+      const [correlationWindowHours, setCorrelationWindowHours] = useState(6);
       const weightChartRef = useRef(null);
       const weightChartInstanceRef = useRef(null);
       const fastingChartRef = useRef(null);
@@ -3296,6 +3355,67 @@
                     return (
                       <div style={{ position: 'relative', height: '280px' }}>
                         <canvas ref={fastingChartRef}></canvas>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {historyView === 'charts' && (
+                <div style={styles.card}>
+                  <div style={styles.cardTitle}>🔗 Food–Symptom Patterns</div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Look back window</label>
+                    <select
+                      value={correlationWindowHours}
+                      onChange={e => setCorrelationWindowHours(parseFloat(e.target.value))}
+                      style={styles.select}
+                    >
+                      <option value={2}>Within 2 hours</option>
+                      <option value={4}>Within 4 hours</option>
+                      <option value={6}>Within 6 hours</option>
+                      <option value={12}>Within 12 hours</option>
+                      <option value={24}>Any time that day</option>
+                    </select>
+                  </div>
+                  {(() => {
+                    const results = computeFoodSymptomCorrelation(historyDateFrom, historyDateTo, correlationWindowHours);
+                    if (results.length === 0) {
+                      return (
+                        <div style={styles.emptyState}>
+                          Not enough overlapping food and symptom data in this range yet.
+                        </div>
+                      );
+                    }
+                    return (
+                      <div>
+                        <div style={{ fontSize: '13px', color: '#666', marginBottom: '1rem' }}>
+                          How often each food item was logged shortly before a symptom, out of all the times you ate it.
+                        </div>
+                        {results.slice(0, 10).map((r, idx) => {
+                          const pct = Math.round(r.ratio * 100);
+                          const color = pct >= 60 ? '#e74c3c' : pct >= 35 ? '#f39c12' : '#666';
+                          return (
+                            <div
+                              key={idx}
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '0.75rem 0',
+                                borderBottom: '1px solid #eee',
+                              }}
+                            >
+                              <div style={{ fontSize: '16px', fontWeight: '600', color: '#333', textTransform: 'capitalize' }}>
+                                {r.item}
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '18px', fontWeight: '700', color }}>{pct}%</div>
+                                <div style={{ fontSize: '11px', color: '#999' }}>{r.symptomCount} of {r.totalCount} times</div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })()}
