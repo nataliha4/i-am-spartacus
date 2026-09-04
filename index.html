@@ -746,7 +746,7 @@
         });
       };
 
-      const confirmRecurringDone = (supp, chosenTime) => {
+      const confirmRecurringDone = (supp, chosenTime, notes) => {
         const key = `recurring-${supp.id}`;
         const timestamp = new Date().toLocaleTimeString('en-US', {
           hour: '2-digit',
@@ -761,7 +761,7 @@
             ...prev,
             [dateKey]: {
               ...prevDay,
-              supplements: [...prevSupplements, { name: supp.name, time: chosenTime, notes: '', timestamp, id: newEntryId }],
+              supplements: [...prevSupplements, { name: supp.name, time: chosenTime, notes: notes || '', timestamp, id: newEntryId }],
               dueDismissed: [...(prevDay.dueDismissed || []), key, `logged-${newEntryId}`],
             },
           };
@@ -769,6 +769,7 @@
       };
 
       const [confirmingSuppId, setConfirmingSuppId] = useState(null);
+      const [confirmNotes, setConfirmNotes] = useState('');
       const [confirmTime, setConfirmTime] = useState('');
       const [confirmingUncheckSuppId, setConfirmingUncheckSuppId] = useState(null);
       const [confirmingUncheckGymId, setConfirmingUncheckGymId] = useState(null);
@@ -828,7 +829,7 @@
         });
       };
 
-      const confirmRecurringGymDone = (item, chosenTime) => {
+      const confirmRecurringGymDone = (item, chosenTime, notes) => {
         const key = `recurring-gym-${item.id}`;
         const timestamp = new Date().toLocaleTimeString('en-US', {
           hour: '2-digit',
@@ -843,7 +844,7 @@
             ...prev,
             [dateKey]: {
               ...prevDay,
-              gym: [...prevGym, { activity: item.name, time: chosenTime, notes: '', timestamp, id: newEntryId }],
+              gym: [...prevGym, { activity: item.name, time: chosenTime, notes: notes || '', timestamp, id: newEntryId }],
               dueDismissed: [...(prevDay.dueDismissed || []), key],
             },
           };
@@ -2101,21 +2102,30 @@
                               onChange={e => setConfirmTimeVal(e.target.value)}
                               style={styles.editInput}
                             />
+                            <label style={{ fontSize: '13px', color: '#666' }}>Notes (optional)</label>
+                            <textarea
+                              placeholder="e.g., dosage, duration..."
+                              value={confirmNotes}
+                              onChange={e => setConfirmNotes(e.target.value)}
+                              style={{ ...styles.editInput, minHeight: '60px' }}
+                            />
                             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                               <button
                                 onClick={() => {
-                                  onConfirmDone(item, confirmTimeVal);
+                                  onConfirmDone(item, confirmTimeVal, confirmNotes);
                                   setConfirmingId(null);
+                                  setConfirmNotes('');
                                 }}
                                 style={styles.saveButton}
                               >
                                 Confirm
                               </button>
-                              <button onClick={() => setConfirmingId(null)} style={styles.cancelButton}>Cancel</button>
+                              <button onClick={() => { setConfirmingId(null); setConfirmNotes(''); }} style={styles.cancelButton}>Cancel</button>
                               <span
                                 onClick={() => {
                                   markRecurringFailed(failedKey);
                                   setConfirmingId(null);
+                                  setConfirmNotes('');
                                 }}
                                 style={{ color: '#e74c3c', fontWeight: '700', fontSize: '15px', cursor: 'pointer', marginLeft: 'auto' }}
                               >
@@ -2216,23 +2226,32 @@
                                 onChange={e => setConfirmTimeVal(e.target.value)}
                                 style={styles.editInput}
                               />
+                              <label style={{ fontSize: '13px', color: '#666' }}>Notes (optional)</label>
+                              <textarea
+                                placeholder="e.g., dosage, duration..."
+                                value={confirmNotes}
+                                onChange={e => setConfirmNotes(e.target.value)}
+                                style={{ ...styles.editInput, minHeight: '60px' }}
+                              />
                               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                 <button
                                   onClick={() => {
-                                    onConfirmDone(item, confirmTimeVal);
+                                    onConfirmDone(item, confirmTimeVal, confirmNotes);
                                     setConfirmingId(null);
+                                    setConfirmNotes('');
                                   }}
                                   style={styles.saveButton}
                                 >
                                   Confirm
                                 </button>
-                                <button onClick={() => setConfirmingId(null)} style={styles.cancelButton}>
+                                <button onClick={() => { setConfirmingId(null); setConfirmNotes(''); }} style={styles.cancelButton}>
                                   Cancel
                                 </button>
                                 <span
                                   onClick={() => {
                                     markRecurringFailed(failedKey);
                                     setConfirmingId(null);
+                                    setConfirmNotes('');
                                   }}
                                   style={{ color: '#e74c3c', fontWeight: '700', fontSize: '15px', cursor: 'pointer', marginLeft: 'auto' }}
                                 >
