@@ -2421,6 +2421,41 @@
                   <div style={styles.cardTitle}>🧾 Day Timeline</div>
                   <div>
                     {dayTimeline.map(item => {
+                      if (item.id === 'fast-active-start' && editingActiveFastStart) {
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              padding: '1rem 1.25rem',
+                              backgroundColor: '#fff',
+                              border: '2px solid #333',
+                              borderRadius: '8px',
+                              marginBottom: '0.75rem',
+                            }}
+                          >
+                            <label style={{ fontSize: '13px', color: '#666' }}>Actual fast start time</label>
+                            <input
+                              type="time"
+                              value={editActiveFastTime}
+                              onChange={e => setEditActiveFastTime(e.target.value)}
+                              style={styles.editInput}
+                            />
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                              <button
+                                onClick={() => {
+                                  saveActiveFastStartTime(editActiveFastTime);
+                                  setEditingActiveFastStart(false);
+                                }}
+                                style={styles.saveButton}
+                              >
+                                Save
+                              </button>
+                              <button onClick={() => setEditingActiveFastStart(false)} style={styles.cancelButton}>Cancel</button>
+                            </div>
+                          </div>
+                        );
+                      }
+
                       const editingThis = timelineEditingKey === item.id;
 
                       if (editingThis) {
@@ -2669,12 +2704,17 @@
                         key={item.id}
                         style={{
                           ...styles.entry,
-                          cursor: item.category && item.entry ? 'pointer' : 'default',
+                          cursor: (item.category && item.entry) || item.id === 'fast-active-start' ? 'pointer' : 'default',
                           ...(item.milestone
                             ? { backgroundColor: '#eafaf1', border: '2px solid #27ae60' }
                             : {}),
                         }}
                         onClick={() => {
+                          if (item.id === 'fast-active-start') {
+                            setEditActiveFastTime(activeFast.startTime);
+                            setEditingActiveFastStart(true);
+                            return;
+                          }
                           if (!item.category || !item.entry) return;
                           startEdit(item.category, item.entry);
                           setTimelineEditingKey(item.id);
