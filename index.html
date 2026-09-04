@@ -2045,7 +2045,7 @@
                 const now = new Date();
                 const nowTotalMin = now.getHours() * 60 + now.getMinutes();
 
-                const upcomingItems = [
+                const allPendingItems = [
                   ...Object.values(recurringSupps).filter(isSuppScheduledToday).map(s => ({ item: s, type: 'supplement' })),
                   ...Object.values(recurringGym).filter(isSuppScheduledToday).map(g => ({ item: g, type: 'gym' })),
                 ].filter(({ item, type }) => {
@@ -2058,7 +2058,11 @@
                   return true;
                 }).sort((a, b) => (a.item.time || '').localeCompare(b.item.time || ''));
 
-                if (upcomingItems.length === 0) return null;
+                if (allPendingItems.length === 0) return null;
+
+                // Only show the nearest-scheduled item(s) — once marked done/failed, the next one surfaces automatically
+                const nearestTime = allPendingItems[0].item.time;
+                const upcomingItems = allPendingItems.filter(({ item }) => item.time === nearestTime);
 
                 return (
                   <div style={styles.card}>
