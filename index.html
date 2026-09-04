@@ -1702,10 +1702,10 @@
           <div style={styles.tabs}>
             {[
               { key: 'dashboard', icon: '📊', name: 'Dashboard' },
-              { key: 'plan', icon: '🎯', name: 'Plan for Today' },
               { key: 'timeline', icon: '🧾', name: 'Day Timeline' },
+              { key: 'history', icon: '📈', name: 'Stats and History' },
+              { key: 'plan', icon: '🎯', name: 'Plan for Today' },
               { key: 'settings', icon: '🛠️', name: 'Settings' },
-              { key: 'history', icon: '📈', name: 'History' },
             ].map(tab => (
               <div
                 key={tab.key}
@@ -3183,6 +3183,9 @@
           {/* History Tab */}
           {activeTab === 'history' && (
             <div style={styles.content}>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#333', marginBottom: '1.25rem' }}>
+                📈 Stats and History
+              </div>
               <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
                 <div
                   role="button"
