@@ -2055,9 +2055,7 @@
                   const failed = isRecurringFailed(failedKey);
                   if (done || failed) return false;
                   if (!item.time) return false;
-                  const [h, m] = item.time.split(':').map(Number);
-                  const scheduledMin = h * 60 + m;
-                  return (scheduledMin - nowTotalMin) <= 60;
+                  return true;
                 }).sort((a, b) => (a.item.time || '').localeCompare(b.item.time || ''));
 
                 if (upcomingItems.length === 0) return null;
@@ -2078,7 +2076,22 @@
 
                       const [h, m] = item.time.split(':').map(Number);
                       const scheduledMin = h * 60 + m;
-                      const overdue = scheduledMin < nowTotalMin;
+                      const diffMin = scheduledMin - nowTotalMin;
+
+                      let urgencyColor, urgencyBg;
+                      if (diffMin > 60) {
+                        urgencyColor = '#999';
+                        urgencyBg = '#f5f5f5';
+                      } else if (diffMin > 0) {
+                        urgencyColor = '#27ae60';
+                        urgencyBg = '#eafaf1';
+                      } else if (diffMin > -60) {
+                        urgencyColor = '#856404';
+                        urgencyBg = '#fff3cd';
+                      } else {
+                        urgencyColor = '#c0392b';
+                        urgencyBg = '#fdecea';
+                      }
 
                       if (isConfirming) {
                         return (
@@ -2148,8 +2161,8 @@
                             alignItems: 'center',
                             gap: '0.75rem',
                             padding: '1rem 1.25rem',
-                            backgroundColor: overdue ? '#fdecea' : '#fff3cd',
-                            border: `2px solid ${overdue ? '#e74c3c' : '#f39c12'}`,
+                            backgroundColor: urgencyBg,
+                            border: `2px solid ${urgencyColor}`,
                             borderRadius: '8px',
                             marginBottom: '0.75rem',
                             cursor: 'pointer',
@@ -2159,8 +2172,12 @@
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: '600', fontSize: '17px', color: '#333' }}>{item.name}</div>
                           </div>
-                          <div style={{ fontSize: '14px', color: overdue ? '#c0392b' : '#856404', fontWeight: '600' }}>
-                            {overdue ? `Overdue · ${formatTime12h(item.time)}` : formatTime12h(item.time)}
+                          <div style={{ fontSize: '14px', color: urgencyColor, fontWeight: '600' }}>
+                            {diffMin <= -60
+                              ? `Overdue · ${formatTime12h(item.time)}`
+                              : diffMin <= 0
+                              ? `Due now · ${formatTime12h(item.time)}`
+                              : formatTime12h(item.time)}
                           </div>
                         </div>
                       );
