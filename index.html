@@ -256,9 +256,10 @@
         const hoursPart = Math.floor(absMin / 60);
         const minutesPart = absMin % 60;
 
-        let urgency = 'green';
-        if (isOverdue) urgency = 'red';
-        else if (diffMin <= 60) urgency = 'yellow';
+        let urgency = 'gray';
+        if (diffMin <= -60) urgency = 'red';
+        else if (diffMin <= 0) urgency = 'yellow';
+        else if (diffMin <= 60) urgency = 'green';
 
         return { time: targetTime, hoursPart, minutesPart, isOverdue, urgency };
       };
@@ -1833,7 +1834,7 @@
                     <div>
                       {(() => {
                         const next = getNextFastPrediction();
-                        const urgencyColors = { green: '#27ae60', yellow: '#f39c12', red: '#e74c3c' };
+                        const urgencyColors = { gray: '#999', green: '#27ae60', yellow: '#f39c12', red: '#e74c3c' };
                         const urgencyColor = urgencyColors[next.urgency];
                         return (
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.5rem' }}>
@@ -1865,7 +1866,7 @@
                           const percent = Math.round((fastingStatus.hours / goalHours) * 100);
                           const percentColor = percent >= 100 ? '#27ae60' : '#f39c12';
                           const next = getNextFastPrediction();
-                          const urgencyColors = { green: '#27ae60', yellow: '#f39c12', red: '#e74c3c' };
+                          const urgencyColors = { gray: '#999', green: '#27ae60', yellow: '#f39c12', red: '#e74c3c' };
                           const nextColor = urgencyColors[next.urgency];
                           const nextBig = next.isOverdue
                             ? 'Overdue'
@@ -1901,7 +1902,7 @@
                       ) : (
                         (() => {
                           const next = getNextFastPrediction();
-                          const urgencyColors = { green: '#27ae60', yellow: '#f39c12', red: '#e74c3c' };
+                          const urgencyColors = { gray: '#999', green: '#27ae60', yellow: '#f39c12', red: '#e74c3c' };
                           const nextColor = urgencyColors[next.urgency];
                           const nextBig = next.isOverdue
                             ? 'Overdue'
