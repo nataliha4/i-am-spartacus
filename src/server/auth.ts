@@ -1,7 +1,8 @@
-import { betterAuth } from "better-auth";
+import { type BetterAuthOptions, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import type { Database } from "../db/connection";
 import * as schema from "../db/schema";
+import { googleCredentials } from "./public-config";
 export function authOptions(
   database: Database,
   options: { onResetToken?: (token: string) => void } = {},
@@ -12,6 +13,7 @@ export function authOptions(
     throw new Error(
       "BETTER_AUTH_URL and a BETTER_AUTH_SECRET of at least 32 characters are required",
     );
+  const google = googleCredentials();
   return {
     baseURL,
     secret,
@@ -21,6 +23,64 @@ export function authOptions(
       transaction: true,
     }),
     trustedOrigins: [new URL(baseURL).origin],
+    socialProviders: google
+      ? {
+          google: {
+            ...google,
+            prompt: "select_account",
+            accessType: "online",
+            includeGrantedScopes: false,
+            scope: ["openid", "email", "profile"],
+            disableDefaultScope: true,
+            requireEmailVerification: true,
+            mapProfileToUser: () => ({ image: "" }),
+          },
+        }
+      : {},
+    user: {
+      validateUserInfo: ({ user, source }) => {
+        if (source.method === "oauth" && user.emailVerified !== true)
+          return { error: "A verified Google email is required" };
+      },
+    },
+    account: {
+      encryptOAuthTokens: true,
+      storeStateStrategy: "database",
+      skipStateCookieCheck: false,
+      accountLinking: {
+        enabled: true,
+        trustedProviders: ["google"],
+        requireLocalEmailVerified: true,
+      },
+    },
+    databaseHooks: {
+      // Identity is verified before these storage hooks. This app never calls
+      // Google APIs after login, so discard all unused bearer tokens, including
+      // idToken (Better Auth 1.7.4 does not encrypt that field).
+      account: {
+        create: {
+          before: async (account) => ({
+            data: {
+              ...account,
+              accessToken: null,
+              refreshToken: null,
+              idToken: null,
+            },
+          }),
+        },
+        update: {
+          before: async (account) => ({
+            data: {
+              ...account,
+              accessToken: null,
+              refreshToken: null,
+              idToken: null,
+            },
+          }),
+        },
+      },
+    },
+    onAPIError: { errorURL: "/" },
     emailAndPassword: {
       enabled: true,
       disableSignUp: true,
@@ -49,10 +109,22 @@ export function authOptions(
       storage: "database" as const,
       window: 60,
       max: 60,
-      customRules: { "/sign-in/email": { window: 60, max: 10 } },
+      customRules: {
+        "/sign-in/email": { window: 60, max: 10 },
+        "/sign-in/social": { window: 60, max: 10 },
+        "/callback/google": { window: 60, max: 20 },
+      },
+    },
+    // Upstream errors can include OAuth state and database parameter values.
+    // Keep operational severity without persisting identity/token details.
+    logger: {
+      log: (level) => {
+        if (process.env.NODE_ENV !== "test")
+          console.warn(JSON.stringify({ event: "auth_event", level }));
+      },
     },
     telemetry: { enabled: false },
-  };
+  } satisfies BetterAuthOptions;
 }
 export function createAuth(database: Database) {
   return betterAuth(authOptions(database));

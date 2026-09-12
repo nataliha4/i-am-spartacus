@@ -125,6 +125,16 @@ export const fastSchema = z
     inferred: z.boolean().optional(),
   })
   .strict()
+  .refine((v) => {
+    try {
+      dateSchema.parse(localDate(v.startTimestampMs, v.timezone));
+      if (v.endTimestampMs !== null)
+        dateSchema.parse(localDate(v.endTimestampMs, v.timezone));
+      return true;
+    } catch {
+      return false;
+    }
+  }, "Fast timestamps must fit the tracker calendar")
   .refine(
     (v) => v.endTimestampMs === null || v.endTimestampMs >= v.startTimestampMs,
     "Fast must end after it starts",

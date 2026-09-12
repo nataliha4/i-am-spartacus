@@ -72,9 +72,14 @@ export function prepareImport(file: unknown, timezone: string): ImportPreview {
         const data = { ...row.data };
         if (row.kind === "checklist")
           data.key = String(data.key).replace(/[0-9a-f-]{36}$/, (old) =>
-            remap(old),
+            remap(
+              `${String(data.key).startsWith("logged-") ? "entry" : "schedule"}:${old}`,
+            ),
           );
-        add({ ...row, id: remap(row.id), revision: 0, data }, row.kind);
+        add(
+          { ...row, id: remap(`${row.kind}:${row.id}`), revision: 0, data },
+          row.kind,
+        );
       }
     } else {
       const data = z

@@ -271,7 +271,6 @@ export default () => {
   const [timelineEditingKey, setTimelineEditingKey] = useState(null);
   const [addEntryType, setAddEntryType] = useState(null);
   const [editingActiveFastStart, setEditingActiveFastStart] = useState(false);
-  const [settingsSavedFlash, setSettingsSavedFlash] = useState(null);
   const [showWeightEntryForm, setShowWeightEntryForm] = useState(false);
   const [showAddRecurringSupp, setShowAddRecurringSupp] = useState(false);
   const [showAddRecurringGym, setShowAddRecurringGym] = useState(false);
@@ -505,12 +504,6 @@ export default () => {
     historyDateTo,
     appSettings.fastingGoalHours,
   ]);
-  const flashSettingsSaved = (fieldKey) => {
-    setSettingsSavedFlash(fieldKey);
-    setTimeout(() => {
-      setSettingsSavedFlash((prev) => (prev === fieldKey ? null : prev));
-    }, 1500);
-  };
   const [editActiveFastTime, setEditActiveFastTime] = useState("");
   const [editingCategory, setEditingCategory] = useState(null);
   const [editData, setEditData] = useState({});
@@ -952,8 +945,6 @@ export default () => {
     setAddEntryType,
     editingActiveFastStart,
     setEditingActiveFastStart,
-    settingsSavedFlash,
-    setSettingsSavedFlash,
     showWeightEntryForm,
     setShowWeightEntryForm,
     showAddRecurringSupp,
@@ -976,7 +967,6 @@ export default () => {
     weightChartInstanceRef,
     fastingChartRef,
     fastingChartInstanceRef,
-    flashSettingsSaved,
     editActiveFastTime,
     setEditActiveFastTime,
     setActiveFastDraft,

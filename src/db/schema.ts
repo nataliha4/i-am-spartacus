@@ -51,7 +51,10 @@ export const session = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     impersonatedBy: text("impersonated_by"),
   },
-  (table) => [index("session_user_idx").on(table.userId)],
+  (table) => [
+    index("session_user_idx").on(table.userId),
+    index("session_expiry_idx").on(table.expiresAt),
+  ],
 );
 export const account = pgTable(
   "auth_account",
@@ -102,7 +105,10 @@ export const verification = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [index("verification_identifier_idx").on(table.identifier)],
+  (table) => [
+    index("verification_identifier_idx").on(table.identifier),
+    index("verification_expiry_idx").on(table.expiresAt),
+  ],
 );
 export const rateLimit = pgTable(
   "auth_rate_limit",
@@ -192,4 +198,28 @@ export const imports = pgTable("data_imports", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+});
+
+// Counters are maintained by transactional triggers in the migration.
+export const registrationCapacity = pgTable(
+  "registration_capacity",
+  {
+    id: integer().primaryKey().default(1),
+    maxUsers: integer("max_users").notNull().default(100),
+    registeredUsers: integer("registered_users").notNull().default(0),
+  },
+  (t) => [
+    check("registration_singleton", sql`${t.id} = 1`),
+    check(
+      "registration_valid",
+      sql`${t.maxUsers} >= 0 AND ${t.registeredUsers} >= 0`,
+    ),
+  ],
+);
+export const trackerUsage = pgTable("tracker_usage", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  rowCount: integer("row_count").notNull().default(0),
+  dataBytes: bigint("data_bytes", { mode: "number" }).notNull().default(0),
 });

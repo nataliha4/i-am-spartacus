@@ -38,7 +38,12 @@ async function account() {
   bucketKeys.push(`session:${session.session.id}`, `transfer:${user.id}`);
   return { userId: user.id, sessionId: session.session.id, cookie };
 }
-function request(path: string, cookie: string, body?: unknown) {
+function request(
+  path: string,
+  cookie: string,
+  body?: unknown,
+  clientIP = "203.0.113.100",
+) {
   return app.request(
     `/api/v1${path}`,
     {
@@ -51,7 +56,7 @@ function request(path: string, cookie: string, body?: unknown) {
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     },
-    { clientIP: "203.0.113.100" },
+    { clientIP },
   );
 }
 function row(
@@ -105,7 +110,7 @@ test("web auth has no admin API, and raw client-IP headers cannot establish trus
           password: "invalid-password-123",
         }),
       },
-      { clientIP },
+      { clientIP: "203.0.113.100" },
     );
     expect(response.status).toBe(i < 10 ? 401 : 429);
   }
@@ -273,7 +278,7 @@ test("database budgets are atomic across connections, expire, and enforce sessio
   expect(limited.status).toBe(429);
   expect(limited.headers.get("retry-after")).toBe("60");
   expect((await request("/state", b.cookie)).status).toBe(200);
-  await database.client`INSERT INTO request_buckets (key,count,expires_at) VALUES (${`transfer:${b.userId}`},10,now()+interval '1 minute')`;
+  await database.client`INSERT INTO request_buckets (key,count,expires_at) VALUES (${`transfer:${b.userId}`},10,now()+interval '1 minute') ON CONFLICT (key) DO UPDATE SET count=10`;
   expect((await request("/export", b.cookie)).status).toBe(429);
 });
 
@@ -363,6 +368,174 @@ test("an already throttled IP cannot drain the shared admission budget", async (
         "/api/auth/not-a-route",
         {},
         { clientIP: "198.51.100.202" },
+      )
+    ).status,
+  ).toBe(404);
+});
+
+test("large exports roundtrip at the row and payload quota boundaries", async () => {
+  for (const count of [40000, 50000]) {
+    const source = await account();
+    const target = await account();
+    const ip = count === 40000 ? "192.0.2.201" : "192.0.2.202";
+    bucketKeys.push(`transfer-ip:${ip}`);
+    // Near the 5 MiB JSONB-data quota at 50,000 records, with all row metadata exported.
+    await database.client`INSERT INTO tracking_entries (id,user_id,date,category,data)
+      SELECT gen_random_uuid(), ${source.userId}, '2026-09-12', 'food',
+      jsonb_build_object('note',repeat('x',${count === 50000 ? 90 : 5})) FROM generate_series(1,${count})`;
+    const exported = await request("/export", source.cookie, undefined, ip);
+    expect(exported.status).toBe(200);
+    const file = await exported.json();
+    expect(Buffer.byteLength(JSON.stringify(file))).toBeGreaterThan(
+      4 * 1024 * 1024,
+    );
+    expect(
+      Buffer.byteLength(JSON.stringify({ file, timezone: "UTC" })),
+    ).toBeLessThan(16 * 1024 * 1024);
+    const preview = await request(
+      "/import/preview",
+      target.cookie,
+      { file, timezone: "UTC" },
+      ip,
+    );
+    expect(preview.status).toBe(200);
+    expect((await preview.json()).issues).toEqual([]);
+    const imported = await request(
+      "/import",
+      target.cookie,
+      { file, timezone: "UTC" },
+      ip,
+    );
+    expect(imported.status).toBe(200);
+    expect(((await imported.json()) as Snapshot).rows).toHaveLength(count);
+    const [usage] =
+      await database.client`SELECT row_count,data_bytes FROM tracker_usage WHERE user_id=${target.userId}`;
+    expect(Number(usage.row_count)).toBe(count);
+    expect(Number(usage.data_bytes)).toBeLessThanOrEqual(5 * 1024 * 1024);
+  }
+}, 30000);
+
+test("authenticated imports have bounded bodies and per-account concurrency", async () => {
+  const owner = await account();
+  const ip = "192.0.2.203";
+  bucketKeys.push(`transfer-ip:${ip}`);
+  const abort = new AbortController();
+  const first = app.request(
+    "/api/v1/import/preview",
+    {
+      method: "POST",
+      signal: abort.signal,
+      headers: {
+        cookie: owner.cookie,
+        origin: "http://localhost:5173",
+        "content-type": "application/json",
+      },
+      body: new ReadableStream({
+        start(c) {
+          c.enqueue(new TextEncoder().encode("{"));
+        },
+      }),
+    },
+    { clientIP: ip },
+  );
+  // Wait until session authentication has consumed its budget before probing again.
+  for (let i = 0; i < 100; i++) {
+    const [bucket] =
+      await database.client`SELECT key FROM request_buckets WHERE key=${`transfer:${owner.userId}`}`;
+    if (bucket) break;
+    await Bun.sleep(5);
+  }
+  await Bun.sleep(10);
+  try {
+    expect(
+      (
+        await request(
+          "/import/preview",
+          owner.cookie,
+          { file: {}, timezone: "UTC" },
+          ip,
+        )
+      ).status,
+    ).toBe(429);
+  } finally {
+    abort.abort();
+  }
+  expect((await first).status).toBe(408);
+  expect(
+    (
+      await request(
+        "/import/preview",
+        owner.cookie,
+        { file: {}, timezone: "UTC" },
+        ip,
+      )
+    ).status,
+  ).toBe(200);
+  expect(
+    (
+      await request(
+        "/import/preview",
+        owner.cookie,
+        { file: "x".repeat(16 * 1024 * 1024), timezone: "UTC" },
+        ip,
+      )
+    ).status,
+  ).toBe(413);
+  expect(
+    (
+      await request(
+        "/commit",
+        owner.cookie,
+        { padding: "x".repeat(4 * 1024 * 1024) },
+        ip,
+      )
+    ).status,
+  ).toBe(413);
+});
+
+test("unfinished unauthenticated bodies cannot fill every processing slot", async () => {
+  const isolated = createApp(database).app;
+  const controllers: ReadableStreamDefaultController<Uint8Array>[] = [];
+  const pending = Array.from({ length: 4 }, (_, i) =>
+    isolated.request(
+      "/api/auth/not-a-route",
+      {
+        method: "POST",
+        body: new ReadableStream<Uint8Array>({
+          start(c) {
+            controllers.push(c);
+            c.enqueue(new TextEncoder().encode("{"));
+          },
+        }),
+      },
+      { clientIP: i < 2 ? "192.0.2.210" : "192.0.2.211" },
+    ),
+  );
+  try {
+    const unrelated = await isolated.request(
+      "/api/auth/not-a-route",
+      {},
+      { clientIP: "192.0.2.212" },
+    );
+    expect(unrelated.status).toBe(404);
+    for (let i = 0; i < 20; i++) {
+      const rejected = await isolated.request(
+        "/api/auth/not-a-route",
+        { method: "POST", body: "{}" },
+        { clientIP: "192.0.2.213" },
+      );
+      expect(rejected.status).toBe(429);
+    }
+  } finally {
+    controllers.forEach((c) => c.close());
+    await Promise.all(pending);
+  }
+  expect(
+    (
+      await isolated.request(
+        "/api/auth/not-a-route",
+        { method: "POST", body: "{}" },
+        { clientIP: "192.0.2.213" },
       )
     ).status,
   ).toBe(404);

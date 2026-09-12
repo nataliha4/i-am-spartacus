@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import { localDate, localTime, fastHours } from "../../shared/model";
+
 export default function Settings({ model }) {
   const {
-    activeTab,
     styles,
     appSettings: savedSettings,
     setAppSettings: persistSettings,
@@ -111,18 +110,6 @@ export default function Settings({ model }) {
               }}
               style={styles.input}
             />
-            {settingsSavedFlash === "fastingGoalHours" && (
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "#27ae60",
-                  fontWeight: "600",
-                  marginTop: "0.4rem",
-                }}
-              >
-                ✓ Saved
-              </div>
-            )}
           </div>
           <div style={styles.formGroup}>
             <label style={styles.label}>Daily start time</label>
@@ -140,18 +127,6 @@ export default function Settings({ model }) {
               }}
               style={styles.input}
             />
-            {settingsSavedFlash === "fastingStartTime" && (
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "#27ae60",
-                  fontWeight: "600",
-                  marginTop: "0.4rem",
-                }}
-              >
-                ✓ Saved
-              </div>
-            )}
           </div>
         </div>
         <div

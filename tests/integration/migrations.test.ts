@@ -113,6 +113,18 @@ test("security migration preserves existing data while allowing tenant-scoped ID
     expect(rows).toHaveLength(2);
     expect(rows[0].data.note).toBe("Before upgrade");
     expect(rows[1].data.note).toBe("Other account");
+    const usage =
+      await database.client`SELECT user_id,row_count,data_bytes FROM tracker_usage ORDER BY user_id`;
+    expect(usage.map((row) => row.row_count)).toEqual([1, 1]);
+    expect(usage.map((row) => Number(row.data_bytes))).toEqual([
+      Buffer.byteLength('{"note": "Before upgrade"}'),
+      Buffer.byteLength('{"note": "Other account"}'),
+    ]);
+    expect(
+      (
+        await database.client`SELECT registered_users FROM registration_capacity WHERE id=1`
+      )[0].registered_users,
+    ).toBe(2);
   } finally {
     await database?.client.end();
     await admin.client`DROP DATABASE IF EXISTS ${admin.client(name)} WITH (FORCE)`;

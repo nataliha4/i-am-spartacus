@@ -1,7 +1,5 @@
-import { localDate, localTime, fastHours } from "../../shared/model";
 export default function Timeline({ model }) {
   const {
-    activeTab,
     styles,
     dayTimeline,
     editingActiveFastStart,

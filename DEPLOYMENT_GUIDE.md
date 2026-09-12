@@ -51,6 +51,8 @@ After the first deployment, open the old URL in the browser that contains the or
 
 Keep credentials out of Git and frontend builds. Every instance's pool counts against the cluster connection budget. Connect to CNPG's writer service, not a read replica.
 
+Google setup and launch checks are in [GOOGLE_AUTH_SETUP.md](GOOGLE_AUTH_SETUP.md). The runtime also accepts `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `OPERATOR_NAME`, `PRIVACY_CONTACT`, `BACKUP_RETENTION_DAYS`, and `LOG_RETENTION_DAYS`. Both Google variables may be absent during initial setup; partial credentials or incomplete production policy settings fail startup. Retention values must match the actual infrastructure policy. `/privacy` and `/terms` are public, server-rendered and excluded from the PWA navigation cache.
+
 ## Database account
 
 Use one PostgreSQL login that owns the dedicated application database and its schema/tables. Supply the same `DATABASE_URL` to the app and migration image; this account can both change the schema and read/write tracker data. A regular database owner is sufficient; PostgreSQL superuser privileges are not required.
@@ -87,9 +89,9 @@ Only transactional SQL is supported; `CREATE INDEX CONCURRENTLY` needs a deliber
 
 `TRUST_PROXY=true` requires `TRUSTED_PROXY_CIDRS` containing the actual ingress IPs/subnets, not a broad network also occupied by clients. Forwarded chains are walked from the actual socket peer toward the client; headers from an untrusted direct caller cannot replace its socket IP. Requests without a resolvable client address are rejected before authentication rather than sharing a placeholder rate-limit key.
 
-Before database access, each instance permits up to 1,200 API requests/minute, 120 per client IP/minute (IPv6 grouped by /64), and 20 in-flight requests. Admission storage has a fixed capacity and rejects new keys when full. Auth retains its database-backed limit of 10 email sign-in attempts/minute per client IP. Tracker requests have an additional PostgreSQL-backed limit of 120/minute per session across all instances; import, preview and export share a 10/minute per-account budget. Exceeded tracker/admission limits return `429` with `Retry-After`. Day and history queries filter by user/date/category in SQL.
+Before database access, each instance permits up to 1,200 API requests/minute, 120 per client IP/minute (IPv6 grouped by /64), and 20 in-flight requests. Admission storage has a fixed capacity and rejects new keys when full; once the global budget is exhausted, new IP keys are not allocated. The global cap sheds load under distributed abuse; it does not isolate an attacker with many distinct networks. Auth has database-backed limits of 10 email or Google sign-in starts/minute per client IP and 20 Google callbacks/minute. Tracker requests have an additional PostgreSQL-backed limit of 120/minute per session across all instances; import, preview, export, full-state/history reads and account deletion share a 10/minute per-account and 30/minute per-IP budget. Exceeded tracker/admission limits return `429` with `Retry-After`. Day and history queries filter by user/date/category in SQL.
 
-Each app instance runs bounded cleanup on startup and every minute, coordinated with a database advisory lock. It removes mutation receipts older than **7 days**, auth rate-limit keys inactive for an hour, and API buckets expired for an hour. Each pass removes at most 10,000 rows per table using indexed cutoffs. Monitor `maintenance_failed` log events. An operator can run a pass manually with the shared app database account:
+Each app instance runs bounded cleanup on startup and every minute, coordinated with a database advisory lock. It removes mutation receipts older than **7 days**, auth rate-limit keys inactive for an hour, API buckets expired for an hour, and expired OAuth verification state and sessions. Each pass removes at most 10,000 rows per table using indexed cutoffs. Monitor `maintenance_failed` log events. An operator can run a pass manually with the shared app database account:
 
 ```sh
 bun run db:prune
@@ -103,7 +105,7 @@ HTTPS deployments send HSTS on API and static responses. Both also send the same
 
 ## Accounts and recovery
 
-Public signup/admin HTTP endpoints are disabled. Run commands in the application image or a trusted checkout with the runtime database/auth environment configured:
+Google signup is open within the database capacity limit; public password signup, admin, account-linking and password-setting endpoints remain disabled. The visible UI uses Google only. For existing password accounts, follow the deliberate transition procedure in [GOOGLE_AUTH_SETUP.md](GOOGLE_AUTH_SETUP.md). Run commands in the application image or a trusted checkout with the runtime database/auth environment configured:
 
 ```sh
 bun run account:create person@example.com "Person Name" < /secure/password-file
@@ -111,10 +113,18 @@ bun run account:reset person@example.com < /secure/new-password-file
 bun run account:revoke person@example.com
 ```
 
-Passwords arrive through stdin and must be 12–128 characters. The CLI uses Better Auth's server APIs for credentials, with no custom hashing or direct credential writes. Reset generates/consumes a short-lived token inside the operator process, sends no email, and revokes existing sessions. Changing a known password in the UI revokes other sessions. Sessions expire after 14 days and renew while active.
+Passwords arrive through stdin and must be 12–128 characters. The CLI uses Better Auth's server APIs for credentials, with no custom hashing or direct credential writes. Reset generates/consumes a short-lived token inside the operator process, sends no email, and revokes existing sessions. The public UI has no password form. Sessions expire after 14 days and renew while active.
 
 ## Legacy cutover and backups
 
 Keep `legacy/index.html` on the original site's origin until users have downloaded and checked their exports. Do not redirect away before transfer. The new service cannot read another origin's localStorage and does not serve/mutate legacy data automatically.
 
-Use the existing CNPG backup process for the complete database: auth, tracker data, receipts, and migration history. Verify restoration into a separate database with readiness/login/read checks. Tracker JSON exports omit accounts and sessions and are not full disaster recovery. Backup scheduling, retention, and Kubernetes rollout automation are infrastructure work.
+Use the existing CNPG backup process for the complete database: auth, tracker data, receipts, and migration history. Verify restoration into a separate database with readiness/login/read checks. Tracker JSON exports omit accounts and sessions and are not full disaster recovery. Backup scheduling, retention, and Kubernetes rollout automation are infrastructure work. Set backup and log expiration to match the public policy variables before opening signup. Track deletions outside any restored backup and reapply them before reopening access; see [GOOGLE_AUTH_SETUP.md](GOOGLE_AUTH_SETUP.md).
+
+### Audit rollout checks
+
+Import and preview requests allow 16 MiB including their JSON envelope; other application requests remain limited to 4 MiB. Configure the ingress to accept the import limit. Body reads have an absolute 30-second deadline, four concurrent readers per process, and two per client IP. Import operations additionally permit two per process and one per account.
+
+The Pages exporter is now read-only and uses no external scripts. After this exporter reaches `main`, select **Settings → Pages → Build and deployment → Source → GitHub Actions**, run the Legacy Pages exporter workflow, and verify the original Pages URL. Preserve that origin so existing browser data remains accessible.
+
+Backup-safe deletion is still a deferred launch requirement: see the deletion-journal section in `GOOGLE_AUTH_SETUP.md`. Live database deletion does not supply a restore replay log.

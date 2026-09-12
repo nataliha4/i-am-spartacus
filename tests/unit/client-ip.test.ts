@@ -36,3 +36,14 @@ test("missing or malformed trusted chains fail closed and configuration is valid
     }),
   ).toEqual(["10.42.1.0/24", "::1"]);
 });
+
+test("rotating IPv6 host addresses share a /64 bucket through direct and trusted-proxy paths", () => {
+  const expected = resolveClientIP("2001:db8:1234:5678::1", null, []);
+  expect(
+    resolveClientIP("2001:db8:1234:5678:ffff:ffff:ffff:ffff", null, []),
+  ).toBe(expected);
+  expect(
+    resolveClientIP("10.42.1.9", "2001:db8:1234:5678::abcd", ["10.42.1.0/24"]),
+  ).toBe(expected);
+  expect(resolveClientIP("2001:db8:1234:5679::1", null, [])).not.toBe(expected);
+});

@@ -10,3 +10,5 @@ playwright-report
 legacy
 .cache
 .idea
+
+.secaudit

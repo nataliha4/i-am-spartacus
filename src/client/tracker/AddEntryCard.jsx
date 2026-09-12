@@ -1,4 +1,4 @@
-import { localDate, localTime, fastHours } from "../../shared/model";
+import { localDate } from "../../shared/model";
 export default function AddEntryCard({ model }) {
   const {
     currentDate,

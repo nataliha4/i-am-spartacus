@@ -24,10 +24,11 @@ export function resolveClientIP(
   proxies: string[],
 ): string | null {
   if (!socketIP || !isValidIP(socketIP)) return null;
-  if (!proxies.length) return getIPFromHeader(socketIP);
+  if (!proxies.length) return getIPFromHeader(socketIP, { ipv6Subnet: 64 });
   // The actual socket peer anchors the chain. An untrusted direct caller's
   // forwarded headers are ignored, even when it spoofs a trusted proxy IP.
   return getIPFromHeader(`${forwarded ?? ""},${socketIP}`, {
     trustedProxies: proxies,
+    ipv6Subnet: 64,
   });
 }

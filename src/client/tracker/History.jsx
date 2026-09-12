@@ -1,7 +1,6 @@
-import { localDate, localTime, fastHours } from "../../shared/model";
+import { localDate } from "../../shared/model";
 export default function History({ model }) {
   const {
-    activeTab,
     styles,
     setHistoryView,
     historyView,

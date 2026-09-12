@@ -6,6 +6,12 @@ export class MemoryLimiter {
   private entries = new Map<string, { count: number; expires: number }>();
   private nextSweep = 0;
   constructor(private capacity = 10000) {}
+  retryAfter(key: string, max: number, now = Date.now()) {
+    const entry = this.entries.get(key);
+    return entry && entry.expires > now && entry.count >= max
+      ? Math.max(1, Math.ceil((entry.expires - now) / 1000))
+      : 0;
+  }
   consume(key: string, max: number, windowMs: number, now = Date.now()) {
     if (now >= this.nextSweep) {
       for (const [key, entry] of this.entries)

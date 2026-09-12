@@ -1,13 +1,19 @@
-import { isValidIP } from "@better-auth/core/utils/ip";
+import { getIPFromHeader, isValidIP } from "@better-auth/core/utils/ip";
 import { securityHeaders } from "./security-headers";
 import { MemoryLimiter, consumeBudget } from "./rate-limits";
 import { cacheReadiness } from "./readiness";
 import { Hono } from "hono";
-import { bodyLimit } from "hono/body-limit";
+import { BodyReader, ConcurrencyGate } from "./request-body";
+import {
+  IMPORT_BODY_BYTES,
+  REQUEST_BODY_BYTES,
+  isImportPath,
+} from "../shared/limits";
 import { z } from "zod";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import type { Database } from "../db/connection";
 import { createAuth } from "./auth";
+import { policyPage } from "./policy";
 import {
   JsonDepthError,
   commitSchema,
@@ -25,7 +31,12 @@ import {
   writeOnce,
 } from "./store";
 
-type Variables = { userId: string; requestId: string };
+type Variables = {
+  userId: string;
+  requestId: string;
+  clientIP: string;
+  sessionCreatedAt: Date;
+};
 const importSchema = z
   .object({ file: z.unknown(), timezone: settingsSchema.shape.timezone })
   .strict();
@@ -60,14 +71,19 @@ export function createApp(database: Database) {
   const admission = new MemoryLimiter();
   let inFlight = 0;
   app.use("/api/*", async (c, next) => {
-    const ip = c.env?.clientIP;
+    const ip =
+      c.env?.clientIP && getIPFromHeader(c.env.clientIP, { ipv6Subnet: 64 });
     if (!ip || !isValidIP(ip))
       throw new AppError(
         400,
         "CLIENT_IP_UNAVAILABLE",
         "A verified client address is required",
       );
+    c.set("clientIP", ip);
+    // Once globally saturated, allocate no new IP entries. Throttled IPs
+    // still never spend the shared budget. The map stays bounded under churn.
     const retry =
+      admission.retryAfter("global", 1200) ||
       admission.consume(`ip:${ip}`, 120, 60000) ||
       admission.consume("global", 1200, 60000);
     if (retry || inFlight >= 20) {
@@ -85,10 +101,21 @@ export function createApp(database: Database) {
       inFlight--;
     }
   });
-  app.use("/api/*", bodyLimit({ maxSize: 10 * 1024 * 1024 }));
-  // No admin, signup, or password recovery routes are exposed by the web application.
+  const bodyReader = new BodyReader();
+  const imports = new ConcurrencyGate(2, 1);
+  app.use("/api/auth/*", async (c, next) => {
+    c.req.raw = await bodyReader.read(
+      c.req.raw,
+      c.get("clientIP"),
+      REQUEST_BODY_BYTES,
+    );
+    await next();
+  });
+  // No admin, password signup, or password recovery routes are exposed by the web application.
   const authPaths = new Set([
     "/sign-in/email",
+    "/sign-in/social",
+    "/callback/google",
     "/sign-out",
     "/get-session",
     "/change-password",
@@ -99,7 +126,16 @@ export function createApp(database: Database) {
         { error: { code: "NOT_FOUND", message: "Not found" } },
         404,
       );
-    const clientIP = c.env?.clientIP;
+    if (
+      !["GET", "HEAD", "OPTIONS"].includes(c.req.method) &&
+      c.req.header("origin") !== new URL(process.env.BETTER_AUTH_URL!).origin
+    )
+      throw new AppError(
+        403,
+        "INVALID_ORIGIN",
+        "Request origin is not allowed",
+      );
+    const clientIP = c.get("clientIP");
     if (!clientIP || !isValidIP(clientIP))
       throw new AppError(
         400,
@@ -109,16 +145,42 @@ export function createApp(database: Database) {
     const headers = new Headers(c.req.raw.headers);
     headers.delete("x-internal-client-ip");
     headers.set("x-spartacus-client-ip", clientIP);
+    if (c.req.path === "/api/auth/sign-in/social" && c.req.method === "POST") {
+      if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET)
+        throw new AppError(
+          503,
+          "SIGN_IN_UNAVAILABLE",
+          "Google sign-in is not configured yet. Please contact the operator.",
+        );
+      // Exclude native idToken login and caller-selected scopes/parameters.
+      // Google must always use the browser state-cookie + PKCE flow.
+      const body = z
+        .object({
+          provider: z.literal("google"),
+          callbackURL: z.literal("/"),
+          errorCallbackURL: z.literal("/").optional(),
+        })
+        .strict()
+        .parse(await c.req.json());
+      return auth.handler(
+        new Request(c.req.url, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body),
+        }),
+      );
+    }
     return auth.handler(new Request(c.req.raw, { headers }));
   });
   app.use("/api/v1/*", async (c, next) => {
     const headers = new Headers(c.req.raw.headers);
-    headers.set("x-spartacus-client-ip", c.env.clientIP!);
+    headers.set("x-spartacus-client-ip", c.get("clientIP"));
     headers.delete("x-internal-client-ip");
     const session = await auth.api.getSession({ headers });
     if (!session)
       throw new AppError(401, "UNAUTHENTICATED", "Please sign in again.");
     c.set("userId", session.user.id);
+    c.set("sessionCreatedAt", session.session.createdAt);
     const allowed = await consumeBudget(
       database,
       `session:${session.session.id}`,
@@ -128,11 +190,19 @@ export function createApp(database: Database) {
       "/api/v1/import",
       "/api/v1/import/preview",
       "/api/v1/export",
+      "/api/v1/state",
+      "/api/v1/history",
+      "/api/v1/account/delete",
     ].includes(c.req.path);
     if (
       !allowed ||
       (expensive &&
-        !(await consumeBudget(database, `transfer:${session.user.id}`, 10)))
+        (!(await consumeBudget(
+          database,
+          `transfer-ip:${c.get("clientIP")}`,
+          30,
+        )) ||
+          !(await consumeBudget(database, `transfer:${session.user.id}`, 10))))
     ) {
       c.header("Retry-After", "60");
       throw new AppError(
@@ -154,6 +224,51 @@ export function createApp(database: Database) {
         throw new AppError(415, "CONTENT_TYPE", "JSON is required");
     }
     await next();
+  });
+  // Authenticate and validate the origin before accepting larger import bodies.
+  app.use("/api/v1/*", async (c, next) => {
+    const importing = isImportPath(c.req.path) && c.req.method === "POST";
+    let release: (() => void) | undefined;
+    try {
+      if (importing) release = imports.acquire(c.get("userId"));
+      c.req.raw = await bodyReader.read(
+        c.req.raw,
+        c.get("clientIP"),
+        importing ? IMPORT_BODY_BYTES : REQUEST_BODY_BYTES,
+      );
+      await next();
+    } finally {
+      release?.();
+    }
+  });
+  app.get("/privacy", (c) => policyPage(c.req.path));
+  app.get("/terms", (c) => policyPage(c.req.path));
+  app.post("/api/v1/account/delete", async (c) => {
+    z.object({ confirmation: z.literal("DELETE") })
+      .strict()
+      .parse(await c.req.json());
+    if (Date.now() - c.get("sessionCreatedAt").getTime() > 10 * 60 * 1000)
+      throw new AppError(
+        403,
+        "REAUTH_REQUIRED",
+        "Sign out and sign in again, then confirm deletion within 10 minutes.",
+      );
+    const userId = c.get("userId");
+    await database.client.begin(async (sql) => {
+      await sql`SELECT pg_advisory_xact_lock(hashtextextended(${userId},0))`;
+      await sql`DELETE FROM request_buckets WHERE key=${`transfer:${userId}`}
+        OR key IN (SELECT 'session:' || id FROM auth_session WHERE user_id=${userId})`;
+      await sql`DELETE FROM auth_verification WHERE identifier LIKE 'reset-password:%' AND value=${userId}`;
+      await sql`DELETE FROM auth_user WHERE id=${userId}`;
+    });
+    // All server sessions are gone; clear the browser cookie as well.
+    const signedOut = await auth.api.signOut({
+      headers: c.req.raw.headers,
+      asResponse: true,
+    });
+    for (const cookie of signedOut.headers.getSetCookie())
+      c.header("Set-Cookie", cookie, { append: true });
+    return c.json({ deleted: true });
   });
   // One DB round-trip, coalesced and limited to once per five seconds.
   const readiness = cacheReadiness(async () => {

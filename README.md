@@ -14,11 +14,11 @@ cp .env.example .env
 docker compose up -d postgres
 # Set a random BETTER_AUTH_SECRET in .env before starting.
 bun run db:migrate
-bun run account:create person@example.com "Your Name" < /path/to/password-file
+# Configure a Google OAuth Web client using GOOGLE_AUTH_SETUP.md.
 bun run dev
 ```
 
-Open <http://localhost:5173>. Password input must contain 12–128 characters, optionally followed by one newline. Keep password files outside the repository and remove them when no longer needed; commands also accept piped input from a password manager. Passwords are never command-line arguments or printed by these commands.
+Open <http://localhost:5173> and continue with Google. Follow [GOOGLE_AUTH_SETUP.md](GOOGLE_AUTH_SETUP.md) to create the OAuth client and publish the operator/privacy settings. Signup is open up to 100 total accounts; each tracker has a 50,000-record / 5 MiB data limit. Account & data provides export and permanent deletion. Inactive accounts are not automatically deleted.
 
 Production: `bun run build`, then `bun start`. The app and separate migration command share `DATABASE_URL` and one database account. Set `BETTER_AUTH_URL` to the external origin. See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for configuration, roles, images, release order, and account recovery.
 
@@ -36,7 +36,7 @@ Production: `bun run build`, then `bun start`. The app and separate migration co
 1. Keep the old application available. Publish `legacy/index.html` as its index page on its existing origin.
 2. In the browser containing the old data, choose **Export data for the new app**. Keep the JSON file.
 3. Sign into an empty tracker account. Open **Account & data**, select the original data's timezone, and choose the export. Do this before saving settings or logging data.
-4. Review counts, warnings, and errors, then confirm. Invalid data prevents the entire import. The exporter never deletes the original browser records.
+4. Choose an export smaller than 4 MiB (including request wrapping). Review counts, warnings, and errors, then confirm. Invalid data prevents the entire import. The exporter never deletes the original browser records.
 
 All five storage records are covered, including checklist markers and active fasts. IDs are remapped to handle old timestamp collisions across dates/categories. Completed legacy fasts lack dates; the importer reports its same-day/previous-day inference. Repeating an identical import is harmless. Different imports into populated accounts are rejected; history merging is outside v1.
 
@@ -80,8 +80,10 @@ Tracker endpoints require a Better Auth cookie. Mutations require the trusted `O
 | `GET /api/v1/export`                         | Version 1 tracker export                      |
 | `POST /api/v1/import/preview`, `/import`     | Preview and all-or-nothing import             |
 
+Account deletion uses `POST /api/v1/account/delete` with `{ "confirmation": "DELETE" }` and a session created within the last 10 minutes. It returns `{ "deleted": true }` and revokes every session.
+
 Commits use `{ operations: [...] }`. Puts contain `{ action: "put", row }`; a row has `id`, `kind`, `date`, `category`, `data`, and `revision`. Revision `0` creates a record. Deletes contain `action`, `kind`, `id`, and `revision`. Exact contracts are in `src/shared/model.ts`. User IDs are never accepted from the client.
 
-Successful mutations return `{ rows }`; errors return `{ error: { code, message } }`. Statuses: `400` validation, `401` missing/expired session, `403` wrong origin, `409` stale revision or singleton conflict, `429` rate limited (honor `Retry-After`), and `503` unconfirmed service failure. Retry unconfirmed requests with the same key and body within seven days; after that, reload and review the current state. Reusing a key with another body is rejected. On conflict, reload/review and cancel/reopen the affected editor to use its latest revision; there is no silent overwrite.
+Successful mutations return `{ rows }`; errors return `{ error: { code, message } }`. Statuses: `400` validation, `401` missing/expired session, `403` wrong origin, `409` stale revision or singleton conflict, `413` storage/request limit, `429` rate limited (honor `Retry-After`), and `503` unconfirmed service failure. Retry unconfirmed requests with the same key and body within seven days; after that, reload and review the current state. Reusing a key with another body is rejected. On conflict, reload/review and cancel/reopen the affected editor to use its latest revision; there is no silent overwrite.
 
-The existing UI reads a full per-user snapshot, refreshing on focus/reconnect and every 30 seconds while active. Writes change individual records. Draft editors retain their original revisions across background refreshes. Larger-scale pagination, sharing, public signup, offline edits, reminders, and Kubernetes manifests are outside v1.
+The existing UI reads a full per-user snapshot, refreshing on focus/reconnect and every 30 seconds while active. Writes change individual records. Draft editors retain their original revisions across background refreshes. Larger-scale pagination, sharing, offline edits, reminders, and Kubernetes manifests are outside v1.

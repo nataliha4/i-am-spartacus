@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { readFile, writeFile } from "node:fs/promises";
 import { connect } from "../../src/db/connection";
 import { createOperatorAuth } from "../../src/server/operator-auth";
@@ -28,6 +28,14 @@ async function createAccount() {
   userIds.push(user.id);
   return email;
 }
+async function login(page: Page, email: string) {
+  const response = await page.request.post("/api/auth/sign-in/email", {
+    headers: { origin: "http://localhost:4173" },
+    data: { email, password: "browser-test-password" },
+  });
+  expect(response.status()).toBe(200);
+  await page.goto("/");
+}
 test("familiar tracker: login, import, every screen, confirmed save, restart and offline", async ({
   page,
   context,
@@ -35,12 +43,7 @@ test("familiar tracker: login, import, every screen, confirmed save, restart and
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   const email = await createAccount();
-  await page.goto("/");
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  await page
-    .getByLabel("Password", { exact: true })
-    .fill("browser-test-password");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await login(page, email);
   await expect(
     page.getByRole("button", { name: "Dashboard", exact: true }),
   ).toBeVisible();
@@ -131,12 +134,7 @@ test("an uncertain save retains the form and retries once, then a stale editor c
   page,
 }) => {
   const email = await createAccount();
-  await page.goto("/");
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  await page
-    .getByLabel("Password", { exact: true })
-    .fill("browser-test-password");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await login(page, email);
   await page.getByRole("button", { name: "Day Timeline", exact: true }).click();
   await page.getByRole("button", { name: /Food/ }).click();
   const note = page.getByPlaceholder(
@@ -233,12 +231,15 @@ test("PWA precaches static assets and never authenticated responses", async ({
     return keys;
   });
   expect(cached.length).toBeGreaterThan(0);
-  expect(cached.some((path) => path.startsWith("/api/"))).toBe(false);
+  expect(
+    cached.some(
+      (path) =>
+        path.startsWith("/api/") || ["/privacy", "/terms"].includes(path),
+    ),
+  ).toBe(false);
   const originalWorker = await readFile("dist/client/sw.js", "utf8");
   try {
-    await page
-      .getByLabel("Email", { exact: true })
-      .fill("unfinished@example.test");
+    await page.getByText("Install this app", { exact: true }).click();
     await writeFile(
       "dist/client/sw.js",
       `${originalWorker}\n// lifecycle test ${crypto.randomUUID()}\n`,
@@ -250,12 +251,66 @@ test("PWA precaches static assets and never authenticated responses", async ({
     await expect(
       page.getByRole("button", { name: "Reload app" }),
     ).toBeVisible();
-    await expect(page.getByLabel("Email", { exact: true })).toHaveValue(
-      "unfinished@example.test",
-    );
+    await expect(page.getByText(/On Android or desktop Chrome/)).toBeVisible();
     await page.getByRole("button", { name: "Reload app" }).click();
-    await expect(page.getByLabel("Email", { exact: true })).toHaveValue("");
+    await expect(
+      page.getByRole("button", { name: "Continue with Google" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/On Android or desktop Chrome/),
+    ).not.toBeVisible();
   } finally {
     await writeFile("dist/client/sw.js", originalWorker);
   }
+});
+
+test("public policies and permanent deletion return to Google login", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/");
+  await expect(
+    page.getByRole("button", { name: "Continue with Google" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Privacy", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Privacy and retention" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Inactive accounts are not automatically deleted."),
+  ).toBeVisible();
+  const requests: string[] = [];
+  context.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/api/"))
+      requests.push(request.url());
+  });
+  const email = await createAccount();
+  await login(page, email);
+  const other = await context.newPage();
+  await other.goto("/");
+  await expect(
+    other.getByRole("button", { name: "Account & data" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Account & data" }).click();
+  await expect(page.getByLabel("Current password")).toHaveCount(0);
+  await page.getByText("Delete my account", { exact: true }).click();
+  const remove = page.getByRole("button", {
+    name: "Permanently delete my account",
+  });
+  await expect(remove).toBeDisabled();
+  await page.getByLabel("Type DELETE to confirm").fill("DELETE");
+  requests.length = 0;
+  await remove.click();
+  await expect(
+    page.getByRole("button", { name: "Continue with Google" }),
+  ).toBeVisible();
+  await expect(
+    other.getByRole("button", { name: "Continue with Google" }),
+  ).toBeVisible();
+  expect((await page.request.get("/api/v1/state")).status()).toBe(401);
+  expect(
+    await database.client`SELECT id FROM auth_user WHERE email=${email}`,
+  ).toHaveLength(0);
+  expect(requests.length).toBeLessThan(15); // No session-expiry refetch storm.
+  await other.close();
 });

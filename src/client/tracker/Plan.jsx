@@ -1,7 +1,5 @@
-import { localDate, localTime, fastHours } from "../../shared/model";
 export default function Plan({ model }) {
   const {
-    activeTab,
     styles,
     recurringSupps,
     isSuppScheduledToday,

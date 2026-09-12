@@ -44,10 +44,12 @@ export function TrackerProvider({
   userId,
   children,
   onExpired,
+  onLogout,
 }: {
   userId: string;
   children: ReactNode;
   onExpired: () => void;
+  onLogout: () => Promise<void>;
 }) {
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false),
@@ -71,10 +73,17 @@ export function TrackerProvider({
     retry: false,
   });
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const state = useMemo(
-    () => project(query.data?.rows ?? [], timezone),
-    [query.data, timezone],
-  );
+  const projection = useMemo(() => {
+    try {
+      return {
+        state: project(query.data?.rows ?? [], timezone),
+        failed: false,
+      };
+    } catch {
+      return { state: project([], timezone), failed: true };
+    }
+  }, [query.data, timezone]);
+  const state = projection.state;
   const stateRef = useRef(state);
   stateRef.current = state;
   const rowsRef = useRef(query.data?.rows ?? []);
@@ -209,6 +218,21 @@ export function TrackerProvider({
             <button onClick={() => void query.refetch()}>Retry</button>
           </>
         )}
+      </div>
+    );
+  if (projection.failed)
+    return (
+      <div className="account-card" role="alert">
+        <p>
+          Your tracker contains data that cannot be displayed. Your records have
+          not been changed.
+        </p>
+        <p>
+          Download your original data and contact the operator for help
+          repairing it.
+        </p>
+        <a href="/api/v1/export">Download original export</a>{" "}
+        <button onClick={() => void onLogout()}>Sign out</button>
       </div>
     );
   const context: Context = {

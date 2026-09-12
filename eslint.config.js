@@ -27,8 +27,4 @@ export default ts.config(
       "@typescript-eslint/no-explicit-any": "error",
     },
   },
-  {
-    files: ["src/client/tracker/**/*.jsx"],
-    rules: { "@typescript-eslint/no-unused-vars": "off" },
-  },
 );

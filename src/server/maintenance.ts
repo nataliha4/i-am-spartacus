@@ -7,7 +7,14 @@ export async function pruneExpired(database: Database) {
   return database.client.begin(async (sql) => {
     const [lock] =
       await sql`SELECT pg_try_advisory_xact_lock(731802515) AS acquired`;
-    if (!lock.acquired) return { receipts: 0, authLimits: 0, apiLimits: 0 };
+    if (!lock.acquired)
+      return {
+        receipts: 0,
+        authLimits: 0,
+        apiLimits: 0,
+        verifications: 0,
+        sessions: 0,
+      };
     const receipts =
       await sql`DELETE FROM mutation_receipts WHERE (user_id,key) IN (
       SELECT user_id,key FROM mutation_receipts WHERE created_at < now() - ${RECEIPT_RETENTION_DAYS} * interval '1 day'
@@ -21,7 +28,16 @@ export async function pruneExpired(database: Database) {
       SELECT key FROM request_buckets WHERE expires_at < now() - interval '1 hour'
       ORDER BY expires_at LIMIT 10000
     ) RETURNING key`;
+    const sessions = await sql`DELETE FROM auth_session WHERE id IN (
+      SELECT id FROM auth_session WHERE expires_at < now() ORDER BY expires_at LIMIT 10000
+    ) RETURNING id`;
+    const verifications = await sql`DELETE FROM auth_verification WHERE id IN (
+      SELECT id FROM auth_verification WHERE expires_at < now()
+      ORDER BY expires_at LIMIT 10000
+    ) RETURNING id`;
     return {
+      verifications: verifications.length,
+      sessions: sessions.length,
       receipts: receipts.length,
       authLimits: authLimits.length,
       apiLimits: apiLimits.length,

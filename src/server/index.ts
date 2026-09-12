@@ -1,3 +1,4 @@
+import { IMPORT_BODY_BYTES } from "../shared/limits";
 import { resolve } from "node:path";
 import { connect } from "../db/connection";
 import { createApp } from "./app";
@@ -9,12 +10,14 @@ const { app } = createApp(database);
 const root = resolve(process.env.STATIC_DIR ?? "dist/client");
 const trustedProxies = trustedProxiesFromEnv();
 const server = Bun.serve({
+  maxRequestBodySize: IMPORT_BODY_BYTES,
   port: Number(process.env.PORT ?? 3000),
   async fetch(request, server) {
     const url = new URL(request.url);
     if (
       url.pathname.startsWith("/api/") ||
-      url.pathname.startsWith("/health/")
+      url.pathname.startsWith("/health/") ||
+      ["/privacy", "/terms"].includes(url.pathname)
     ) {
       const clientIP = resolveClientIP(
         server.requestIP(request)?.address,

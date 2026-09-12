@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState, lazy, Suspense } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { authClient } from "./auth-client";
-import { Login, AccountTools } from "./Account";
+import { Login } from "./Login";
+import { AccountTools } from "./AccountTools";
 import { TrackerProvider } from "./TrackerProvider";
 const Tracker = lazy(() => import("./tracker/Tracker"));
 
@@ -10,6 +11,10 @@ export default function App() {
   const session = authClient.useSession();
   const queryClient = useQueryClient();
   const [error, setError] = useState("");
+  // Unmount private queries immediately on expiry/deletion/sign-out. Clearing
+  // their cache while still mounted can otherwise refetch in a 401 loop.
+  // Google login navigates the document, resetting this flag for the new session.
+  const [sessionInvalid, setSessionInvalid] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
@@ -21,6 +26,7 @@ export default function App() {
     };
   }, []);
   const expired = useCallback(() => {
+    setSessionInvalid(true);
     queryClient.clear();
     void session.refetch();
   }, [queryClient, session.refetch]);
@@ -29,14 +35,20 @@ export default function App() {
     updateServiceWorker,
   } = useRegisterSW();
   useEffect(() => {
-    const clear = () => queryClient.clear();
     const channel = new BroadcastChannel("spartacus-session");
     channel.onmessage = () => {
-      clear();
-      void session.refetch();
+      expired();
     };
     return () => channel.close();
-  }, [queryClient, session.refetch]);
+  }, [expired]);
+  async function clearSession() {
+    setSessionInvalid(true);
+    queryClient.clear();
+    const channel = new BroadcastChannel("spartacus-session");
+    channel.postMessage("changed");
+    channel.close();
+    await session.refetch();
+  }
   async function logout() {
     try {
       const result = await authClient.signOut();
@@ -44,11 +56,7 @@ export default function App() {
         setError("Sign out failed. Please retry.");
         return;
       }
-      queryClient.clear();
-      const channel = new BroadcastChannel("spartacus-session");
-      channel.postMessage("changed");
-      channel.close();
-      await session.refetch();
+      await clearSession();
     } catch {
       setError(
         "Unable to sign out while disconnected. Please reconnect and retry.",
@@ -77,19 +85,24 @@ export default function App() {
       {error && <p role="alert">{error}</p>}
       {session.isPending ? (
         <p className="account-card">Loading…</p>
-      ) : session.data ? (
+      ) : session.data && !sessionInvalid ? (
         <TrackerProvider
           key={session.data.user.id}
           userId={session.data.user.id}
           onExpired={expired}
+          onLogout={logout}
         >
-          <AccountTools email={session.data.user.email} onLogout={logout} />
+          <AccountTools
+            email={session.data.user.email}
+            onLogout={logout}
+            onDeleted={clearSession}
+          />
           <Suspense fallback={<p className="account-card">Loading tracker…</p>}>
             <Tracker />
           </Suspense>
         </TrackerProvider>
       ) : (
-        <Login onSuccess={() => void session.refetch()} />
+        <Login />
       )}
     </>
   );

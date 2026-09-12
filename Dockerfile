@@ -10,9 +10,9 @@ RUN bun run --bun typecheck && bun run --bun build
 FROM oven/bun:1.4.2-slim AS production
 WORKDIR /app
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production
+RUN bun install --frozen-lockfile --production --omit=peer
 COPY --chown=bun:bun src/db ./src/db
-COPY --chown=bun:bun src/server/auth.ts src/server/operator-auth.ts src/server/maintenance.ts ./src/server/
+COPY --chown=bun:bun src/server/auth.ts src/server/operator-auth.ts src/server/maintenance.ts src/server/public-config.ts src/server/account-admin.ts ./src/server/
 COPY --chown=bun:bun scripts/accounts.ts scripts/prune.ts ./scripts/
 
 FROM production AS migrate
@@ -25,6 +25,8 @@ CMD ["apply"]
 FROM production AS runtime
 COPY --from=build --chown=bun:bun /app/dist ./dist
 COPY --chown=bun:bun drizzle ./drizzle
+# GOOGLE_CLIENT_ID/SECRET and policy settings are injected at runtime via --env-file.
+# Never use build arguments or bake real OAuth credentials into either image.
 ENV NODE_ENV=production
 ENV PORT=3000
 USER bun

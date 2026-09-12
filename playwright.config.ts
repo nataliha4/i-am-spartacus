@@ -2,6 +2,12 @@ import { defineConfig, devices } from "@playwright/test";
 process.env.BETTER_AUTH_URL = "http://localhost:4173";
 process.env.BETTER_AUTH_SECRET ??=
   "e2e-only-secret-not-for-production-at-least-32-characters";
+process.env.GOOGLE_CLIENT_ID ??= "ci-dummy.apps.googleusercontent.com";
+process.env.GOOGLE_CLIENT_SECRET ??= "ci-dummy-never-a-real-secret";
+process.env.OPERATOR_NAME ??= "Browser test operator";
+process.env.PRIVACY_CONTACT ??= "browser@example.test";
+process.env.BACKUP_RETENTION_DAYS ??= "0";
+process.env.LOG_RETENTION_DAYS ??= "0";
 export default defineConfig({
   testDir: "./tests/e2e",
   outputDir: "test-results/playwright-output",

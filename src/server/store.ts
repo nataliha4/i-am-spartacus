@@ -64,46 +64,91 @@ export async function readSnapshot(
   return result as Row[];
 }
 export async function applyOperations(
-  sql: SQL,
+  sql: postgres.TransactionSql,
   userId: string,
   operations: Operation[],
 ) {
-  const seen = new Set<string>();
-  for (const operation of operations) {
-    const kind =
-      operation.action === "put" ? operation.row.kind : operation.kind;
-    const id = operation.action === "put" ? operation.row.id : operation.id;
-    if (seen.has(`${kind}:${id}`))
-      throw new AppError(
-        400,
-        "DUPLICATE_OPERATION",
-        "A record may only be changed once per request",
-      );
-    seen.add(`${kind}:${id}`);
-    if (operation.action === "delete") {
-      const result =
-        await sql`DELETE FROM ${sql(tables[kind])} WHERE id=${id} AND user_id=${userId} AND revision=${operation.revision} RETURNING id`;
-      if (!result.length)
+  // The same lock serializes commits, imports and account deletion across pods.
+  await sql`SELECT pg_advisory_xact_lock(hashtextextended(${userId},0))`;
+  try {
+    let pending: Row[] = [];
+    async function flushInserts() {
+      if (!pending.length) return;
+      const kind = pending[0].kind;
+      await sql`INSERT INTO ${sql(tables[kind])} ${sql(
+        pending.map((row) => ({
+          id: row.id,
+          user_id: userId,
+          date: row.date,
+          category: row.category,
+          data: JSON.stringify(row.data),
+        })),
+        "id",
+        "user_id",
+        "date",
+        "category",
+        "data",
+      )}`;
+      pending = [];
+    }
+    const seen = new Set<string>();
+    for (const operation of operations) {
+      const kind =
+        operation.action === "put" ? operation.row.kind : operation.kind;
+      const id = operation.action === "put" ? operation.row.id : operation.id;
+      if (seen.has(`${kind}:${id}`))
         throw new AppError(
-          409,
-          "CONFLICT",
-          "This record changed on another device. Reload and review your changes.",
+          400,
+          "DUPLICATE_OPERATION",
+          "A record may only be changed once per request",
         );
-    } else {
-      const row = validateRow(operation.row);
-      if (row.revision === 0) {
-        await sql`INSERT INTO ${sql(tables[kind])} (id,user_id,date,category,data) VALUES (${row.id},${userId},${row.date},${row.category},${JSON.stringify(row.data)}::jsonb)`;
-      } else {
+      seen.add(`${kind}:${id}`);
+      if (
+        pending.length &&
+        (pending[0].kind !== kind ||
+          pending.length >= 1000 ||
+          operation.action === "delete" ||
+          operation.row.revision !== 0)
+      )
+        await flushInserts();
+      if (operation.action === "delete") {
         const result =
-          await sql`UPDATE ${sql(tables[kind])} SET date=${row.date}, category=${row.category}, data=${JSON.stringify(row.data)}::jsonb, revision=revision+1, updated_at=now() WHERE id=${id} AND user_id=${userId} AND revision=${row.revision} RETURNING id`;
+          await sql`DELETE FROM ${sql(tables[kind])} WHERE id=${id} AND user_id=${userId} AND revision=${operation.revision} RETURNING id`;
         if (!result.length)
           throw new AppError(
             409,
             "CONFLICT",
             "This record changed on another device. Reload and review your changes.",
           );
+      } else {
+        const row = validateRow(operation.row);
+        if (row.revision === 0) {
+          pending.push(row);
+        } else {
+          const result =
+            await sql`UPDATE ${sql(tables[kind])} SET date=${row.date}, category=${row.category}, data=${JSON.stringify(row.data)}::jsonb, revision=revision+1, updated_at=now() WHERE id=${id} AND user_id=${userId} AND revision=${row.revision} RETURNING id`;
+          if (!result.length)
+            throw new AppError(
+              409,
+              "CONFLICT",
+              "This record changed on another device. Reload and review your changes.",
+            );
+        }
       }
     }
+    await flushInserts();
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      "constraint_name" in error &&
+      error.constraint_name === "tracker_storage_limit"
+    )
+      throw new AppError(
+        413,
+        "STORAGE_LIMIT",
+        "Your tracker is limited to 50,000 records and 5 MiB of data. Export and remove records before adding more.",
+      );
+    throw error;
   }
   // Checklist references are namespaced by this user, just like row IDs.
   // Missing references are allowed because markers outlive deleted records.

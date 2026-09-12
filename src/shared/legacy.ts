@@ -84,7 +84,7 @@ export function diffState(
   rows: Row[],
 ): Operation[] {
   const wanted: Row[] = [];
-  const existing = new Map(rows.map((row) => [row.id, row]));
+  const existing = new Map(rows.map((row) => [`${row.kind}:${row.id}`, row]));
   const put = (
     kind: Row["kind"],
     id: string,
@@ -100,7 +100,9 @@ export function diffState(
         date,
         category,
         data,
-        revision: Number(revision ?? existing.get(id)?.revision ?? 0),
+        revision: Number(
+          revision ?? existing.get(`${kind}:${id}`)?.revision ?? 0,
+        ),
       }),
     );
   for (const [date, day] of Object.entries(after.entries)) {
@@ -195,15 +197,15 @@ export function diffState(
       fast._revision,
     );
   }
-  const ids = new Set(wanted.map((row) => row.id));
+  const ids = new Set(wanted.map((row) => `${row.kind}:${row.id}`));
   const operations: Operation[] = [];
   for (const row of wanted) {
-    const old = existing.get(row.id);
+    const old = existing.get(`${row.kind}:${row.id}`);
     if (!old || canonical(old) !== canonical(row))
       operations.push({ action: "put", row });
   }
   for (const row of rows)
-    if (!ids.has(row.id))
+    if (!ids.has(`${row.kind}:${row.id}`))
       operations.push({
         action: "delete",
         kind: row.kind,

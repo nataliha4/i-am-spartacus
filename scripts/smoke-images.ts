@@ -5,6 +5,21 @@ const appImage = process.env.APP_IMAGE;
 const migrationImage = process.env.MIGRATION_IMAGE;
 if (!appImage || !migrationImage)
   throw new Error("Set APP_IMAGE and MIGRATION_IMAGE to locally built images");
+// Production installs must not silently reintroduce build-tool optional peers.
+for (const image of [appImage, migrationImage]) {
+  await docker([
+    "run",
+    "--rm",
+    "--read-only",
+    "--network",
+    "none",
+    "--entrypoint",
+    "bun",
+    image,
+    "-e",
+    'for (const name of ["drizzle-kit", "esbuild", "@esbuild-kit/core-utils"]) { if (await Bun.file(`node_modules/${name}/package.json`).exists()) throw new Error(`Unexpected build dependency: ${name}`); } for await (const path of new Bun.Glob("node_modules/**/esbuild/package.json").scan(".")) throw new Error(`Unexpected esbuild: ${path}`);',
+  ]);
+}
 const suffix = crypto.randomUUID().slice(0, 8);
 const network = `spartacus-smoke-${suffix}`;
 const postgres = `${network}-db`;
@@ -114,6 +129,18 @@ try {
     "--env",
     `BETTER_AUTH_SECRET=${secret}`,
     "--env",
+    "GOOGLE_CLIENT_ID=ci-dummy.apps.googleusercontent.com",
+    "--env",
+    "GOOGLE_CLIENT_SECRET=ci-dummy-never-a-real-secret",
+    "--env",
+    "OPERATOR_NAME=Image test operator",
+    "--env",
+    "PRIVACY_CONTACT=image@example.test",
+    "--env",
+    "BACKUP_RETENTION_DAYS=0",
+    "--env",
+    "LOG_RETENTION_DAYS=0",
+    "--env",
     "TRUST_PROXY=true",
     "--env",
     "TRUSTED_PROXY_CIDRS=192.0.2.0/24",
@@ -159,6 +186,21 @@ try {
   await ready();
   assert.equal((await fetch(`${base}/health/live`)).status, 200);
   assert.match(await (await fetch(`${base}/`)).text(), /I AM SPARTACUS/);
+  for (const page of ["privacy", "terms"]) {
+    const policy = await fetch(`${base}/${page}`);
+    assert.equal(policy.status, 200);
+    assert.match(await policy.text(), /Image test operator/);
+  }
+  const google = await fetch(`${base}/api/auth/sign-in/social`, {
+    method: "POST",
+    headers: { origin, "content-type": "application/json" },
+    body: JSON.stringify({ provider: "google", callbackURL: "/" }),
+  });
+  assert.equal(google.status, 200);
+  assert.equal(
+    new URL((await google.json()).url).hostname,
+    "accounts.google.com",
+  );
   const manifest = await fetch(`${base}/manifest.webmanifest`);
   assert.equal(manifest.status, 200);
   assert.equal((await manifest.json()).display, "standalone");

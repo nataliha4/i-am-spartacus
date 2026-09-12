@@ -1,7 +1,5 @@
-import { localDate, localTime, fastHours } from "../../shared/model";
 export default function Dashboard({ model }) {
   const {
-    activeTab,
     styles,
     activeFast,
     editingActiveFastStart,

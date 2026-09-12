@@ -1,0 +1,23 @@
+body {
+  font:
+    1rem/1.65 system-ui,
+    sans-serif;
+  color: #222;
+  background: #fafafa;
+  margin: 0;
+}
+main {
+  max-width: 48rem;
+  margin: auto;
+  padding: 2rem 1.25rem 4rem;
+}
+a {
+  color: #234c89;
+}
+h1,
+h2 {
+  line-height: 1.25;
+}
+h2 {
+  margin-top: 2rem;
+}

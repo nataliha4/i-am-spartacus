@@ -28,7 +28,11 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,png,svg,woff2}"],
-        navigateFallbackDenylist: [/^\/api\//, /^\/health\//],
+        navigateFallbackDenylist: [
+          /^\/api\//,
+          /^\/health\//,
+          /^\/(privacy|terms)$/,
+        ],
         cleanupOutdatedCaches: true,
         runtimeCaching: [],
       },
@@ -50,6 +54,8 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": "http://localhost:3000",
+      "/privacy": "http://localhost:3000",
+      "/terms": "http://localhost:3000",
       "/health": "http://localhost:3000",
     },
   },
