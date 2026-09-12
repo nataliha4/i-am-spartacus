@@ -1,0 +1,65 @@
+name: Request production deployment
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-dispatch
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    if: >-
+      github.repository == 'nataliha4/i-am-spartacus' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.path == '.github/workflows/ci.yml'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production-dispatch
+    steps:
+      # This privileged workflow never checks out code, downloads artifacts,
+      # restores caches, installs dependencies, or runs app code.
+      - name: Check that the verified commit is still current
+        id: current
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::error::CI supplied an invalid commit SHA.'
+            exit 1
+          fi
+          current_sha=$(gh api "repos/${GITHUB_REPOSITORY}/commits/main" --jq .sha)
+          if [[ "$current_sha" == "$RELEASE_SHA" ]]; then
+            echo 'deploy=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'Skipped: main has advanced beyond this CI run.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Request private production promotion
+        if: steps.current.outputs.deploy == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.SPARTACUS_DEPLOY_TOKEN }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo '::error::Configure SPARTACUS_DEPLOY_TOKEN in the production-dispatch environment. See DEPLOYMENT_GUIDE.md.'
+            exit 1
+          fi
+          # Suppress the API response so private workflow details stay private.
+          gh api --method POST \
+            repos/AG-Teammate/spartacus-k8s/actions/workflows/deploy.yml/dispatches \
+            -f ref=main -f "inputs[release]=$RELEASE_SHA" > /dev/null
+          echo "Requested production promotion for ${RELEASE_SHA}. The private workflow verifies the release; Argo CD performs the rollout." >> "$GITHUB_STEP_SUMMARY"

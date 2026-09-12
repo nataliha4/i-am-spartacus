@@ -15,7 +15,7 @@ Successful `main` runs publish the exact tested images, tagged with the seven-ch
 
 Names derive from the lowercase repository name, so forks use their own namespace. Both images carry source/revision OCI labels. Builds currently target **linux/amd64**, with separate GitHub Actions layer caches. There is no moving `latest` tag. Use the same release tag for migration and runtime; for deployment immutability, record the registry digests. The two pushes are not atomic: use a release only after the entire CI run succeeds.
 
-A separate `publish` job downloads the verified image artifact and pushes it with `GITHUB_TOKEN` and `packages: write`. The verification job, including same-repository pull requests, has only `contents: read`. No checkout, dependency installation, build, test, or container execution runs in the publish job. No registry password or deployment token is needed. An existing GHCR package must grant this repository Actions access. Configure package visibility/pull credentials for your cluster separately. CI uses disposable local databases and never connects to CNPG. Kubernetes manifests, deployment-repository promotion, and production migrations are not triggered by this workflow.
+A separate `publish` job downloads the verified image artifact and pushes it with `GITHUB_TOKEN` and `packages: write`. The verification job, including same-repository pull requests, has only `contents: read`. No checkout, dependency installation, build, test, or container execution runs in the publish job. Image publication needs no registry password or deployment token. An existing GHCR package must grant this repository Actions access. CI uses disposable local databases and never connects to CNPG. After CI completes successfully, a separate notification workflow can request private production promotion as described below.
 
 To repeat the image check locally after building both targets:
 
@@ -24,6 +24,36 @@ APP_IMAGE=spartacus:RELEASE MIGRATION_IMAGE=spartacus-migrate:RELEASE bun run te
 ```
 
 The script requires Docker, creates its own network/database and removes them on completion. It does not use your configured database URLs.
+
+## Automatic production deployment
+
+`.github/workflows/deploy.yml` runs after the **entire CI workflow succeeds**, including image publication. It accepts only main-branch push CI runs from this repository, checks that the verified SHA is still current, and dispatches the private `AG-Teammate/spartacus-k8s` workflow `deploy.yml` on `main`. Pull requests, forks, failed CI and stale releases do not dispatch. The notification job never checks out code, downloads artifacts, restores caches, installs dependencies, or executes application code.
+
+The private workflow independently verifies the complete successful CI publication, both image digests and their source/revision/platform, validates Kustomize, and commits the promotion. It checks the current app main SHA again before promoting and pushing. Argo CD performs the rollout. Public notification success means only **request accepted**, not production healthy; promotion logs and deployment manifests remain private. Image names, commit SHAs and the destination repository name are visible in the public workflow.
+
+### Create the narrowly scoped token
+
+1. Sign in as an account that is a member of **AG-Teammate** and can run Actions in `spartacus-k8s`. Open [Settings → Developer settings → Personal access tokens → Fine-grained tokens](https://github.com/settings/personal-access-tokens/new).
+2. Name it `spartacus-production-dispatch`, choose **AG-Teammate** as resource owner, and set a **90-day expiration** (or the shorter organization-required maximum). Record a renewal reminder.
+3. Under **Repository access → Only select repositories**, select **spartacus-k8s** only.
+4. Under **Repository permissions**, grant **Actions: Read and write**. Leave Contents, Secrets, Administration, Workflows and all other optional permissions unset; Metadata read is automatic. Grant no account permissions.
+5. Generate the token. If the organization requires approval, approve the pending request in its personal-access-token settings before use. If AG-Teammate is unavailable, check organization membership and its fine-grained-token policy instead of expanding to a classic token.
+
+GitHub requires Actions write for [workflow dispatch](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event). This permission covers repository Actions management, not just one workflow; it does not grant repository contents write, secret-value retrieval, or cluster access. Store the token only in GitHub's secret UI, not in chat, tracked files, workflow YAML or shell command arguments.
+
+### Store it in the public app repository
+
+1. Open **nataliha4/i-am-spartacus → Settings → Environments** and create **production-dispatch**.
+2. Under **Deployment branches and tags**, choose **Selected branches and tags** and add a **branch** rule for exactly **main**. Do not add a tag rule. Leave required reviewers and wait timers off for automatic deployment.
+3. Inside that environment, add an **environment secret** named **SPARTACUS_DEPLOY_TOKEN** and paste the token value. Do not put it in repository-level secrets: the environment branch restriction should gate access. Repository-admin access is required to configure this environment.
+
+The environment secret is referenced only by the notification step; builds and tests do not use it. Protect main and review workflow changes: a maintainer who can change workflows on main can change how its secrets are used.
+
+### Enable, verify, and recover
+
+Land the private promotion safeguards first, configure the environment/token, then land the public notification workflow on main. The next successful main CI run triggers one notification and one private promotion, with no scheduled polling. A missing, expired or unapproved token fails the notification workflow visibly while preserving the successful image build.
+
+After setup, verify **Request production deployment** in the public Actions tab, **Deploy production release** in the private repo, then Argo CD health. To retry after fixing credentials, rerun the failed notification workflow; if main has advanced, use its newer CI run. To pause automatic deployment, disable **Request production deployment**. Manual promotion remains available in the private repo. Disable automatic notifications before a deliberate rollback; the private README describes selecting an older verified release and database compatibility requirements.
 
 ## GitHub Pages cutover
 
