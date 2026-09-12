@@ -30,6 +30,41 @@ test("legacy import preserves all categories, checklist links, settings and acti
   );
   expect(diffState(state, state, preview.rows)).toEqual([]);
 });
+test("legacy symptom dates normalize into the row date without losing entry fields", () => {
+  const preview = prepareImport(legacyFixture, "America/New_York");
+  expect(preview.issues).toEqual([]);
+  const symptom = preview.rows.find((row) => row.category === "symptoms")!;
+  const {
+    id: _id,
+    date,
+    ...data
+  } = legacyFixture.data.trackerData["2026-09-12"].symptoms[0];
+  expect(symptom.date).toBe(date);
+  expect(symptom.data).toEqual(data);
+
+  const fixture = structuredClone(legacyFixture);
+  Reflect.deleteProperty(
+    fixture.data.trackerData["2026-09-12"].symptoms[0],
+    "date",
+  );
+  expect(prepareImport(fixture, "UTC").issues).toEqual([]);
+});
+test("legacy symptom normalization rejects conflicting dates and unknown fields", () => {
+  for (const date of ["2026-09-11", "not-a-date", "", null, 123]) {
+    const fixture = structuredClone(legacyFixture);
+    Object.assign(fixture.data.trackerData["2026-09-12"].symptoms[0], { date });
+    expect(prepareImport(fixture, "UTC").issues.join(" ")).toContain(
+      "symptom date must match its containing day",
+    );
+  }
+  const fixture = structuredClone(legacyFixture);
+  Object.assign(fixture.data.trackerData["2026-09-12"].symptoms[0], {
+    unexpected: "must not be silently dropped",
+  });
+  expect(prepareImport(fixture, "UTC").issues.join(" ")).toContain(
+    "Unrecognized key",
+  );
+});
 test("bad records prevent import instead of being silently dropped", () => {
   const fixture = structuredClone(legacyFixture);
   fixture.data.trackerData["2026-09-12"].symptoms[0].level = 99;

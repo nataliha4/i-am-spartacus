@@ -326,6 +326,17 @@ describe("authenticated PostgreSQL API", () => {
     expect(
       (await request("/import", cookieB, { ...body, file: invalid })).status,
     ).toBe(400);
+    const conflictingDate = structuredClone(legacyFixture);
+    conflictingDate.data.trackerData["2026-09-12"].symptoms[0].date =
+      "2026-09-11";
+    expect(
+      (
+        await request("/import", cookieB, {
+          ...body,
+          file: conflictingDate,
+        })
+      ).status,
+    ).toBe(400);
     expect(
       ((await (await request("/state", cookieB)).json()) as Snapshot).rows,
     ).toEqual([]);
@@ -340,6 +351,15 @@ describe("authenticated PostgreSQL API", () => {
     const exported = await (await request("/export", cookieB)).json();
     expect(exported.format).toBe("spartacus");
     expect(exported.data.rows).toHaveLength(count);
+    expect(
+      exported.data.rows.find((row: Row) => row.category === "symptoms"),
+    ).toMatchObject({
+      date: "2026-09-12",
+      data: { symptom: "Headache", level: 3, time: "01:00", notes: "" },
+    });
+    expect(
+      exported.data.rows.find((row: Row) => row.category === "symptoms").data,
+    ).not.toHaveProperty("date");
     expect(JSON.stringify(exported)).not.toContain("userId");
   });
   test("migration status and simultaneous runners are repeatable", async () => {

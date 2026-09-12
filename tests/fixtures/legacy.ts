@@ -16,7 +16,14 @@ export const legacyFixture = {
       },
       "2026-09-12": {
         symptoms: [
-          { id: 101, symptom: "Headache", level: 3, time: "01:00", notes: "" },
+          {
+            id: 101,
+            symptom: "Headache",
+            level: 3,
+            date: "2026-09-12",
+            time: "01:00",
+            notes: "",
+          },
         ],
         supplements: [{ id: 102, name: "Magnesium", time: "08:00", notes: "" }],
         gym: [{ id: 103, activity: "Walk", time: "09:00", notes: "" }],

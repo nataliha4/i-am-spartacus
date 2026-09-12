@@ -131,6 +131,15 @@ export function prepareImport(file: unknown, timezone: string): ImportPreview {
             const { id: oldId, ...fields } = object.parse(value);
             if (typeof oldId !== "string" && typeof oldId !== "number")
               throw new Error(`${date}/${category}: missing legacy ID`);
+            // The old symptom form stored the day both on the entry and as
+            // its trackerData key. The row date now holds that information.
+            if (category === "symptoms" && Object.hasOwn(fields, "date")) {
+              if (fields.date !== date)
+                throw new Error(
+                  `${date}/${category}: legacy symptom date must match its containing day`,
+                );
+              delete fields.date;
+            }
             // Legacy Date.now IDs can collide across dates and categories.
             const id = remap(`entry:${date}:${category}:${oldId}`);
             if (category === "fasting") {
