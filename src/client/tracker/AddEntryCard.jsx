@@ -185,7 +185,6 @@ export default function AddEntryCard({ model }) {
                           symptom: formData.symptom,
                           level: formData.symptomLevel,
                           notes: formData.symptomNotes,
-                          date: currentDate,
                           time: formData.symptomTime || getCurrentTimeHHMM(),
                         }))
                       )

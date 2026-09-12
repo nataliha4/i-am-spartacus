@@ -10,6 +10,13 @@ type HistoryItem = {
 };
 const timed = (entry: LegacyEntry) =>
   typeof entry.time === "string" && /^\d{2}:\d{2}$/.test(entry.time);
+export function latestWeight(entries: LegacyEntry[]): LegacyEntry | undefined {
+  return entries.reduce<LegacyEntry | undefined>((latest, entry) => {
+    const time = timed(entry) ? String(entry.time) : "";
+    const latestTime = latest && timed(latest) ? String(latest.time) : "";
+    return !latest || time >= latestTime ? entry : latest;
+  }, undefined);
+}
 export function historyItems(day: Day, filters: string[]): HistoryItem[] {
   const result: HistoryItem[] = [];
   const push = (

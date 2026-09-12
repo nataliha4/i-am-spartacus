@@ -1,5 +1,10 @@
 import { completeChecklist } from "../../shared/checklist";
-import { historyItems, symptomFoodContext } from "../../shared/selectors";
+import {
+  historyItems,
+  symptomFoodContext,
+  latestWeight,
+} from "../../shared/selectors";
+import { fastGoal, fastReminder } from "../../shared/goals";
 import { useState, useEffect, useRef } from "react";
 
 import { useTracker } from "../TrackerProvider";
@@ -10,6 +15,7 @@ import {
   localTime,
   fastHours,
   scheduledOn,
+  dateSchema,
 } from "../../shared/model";
 export default () => {
   const {
@@ -25,9 +31,12 @@ export default () => {
   } = useTracker();
   const [activeFastDraft, setActiveFastDraft] = useState(null);
   const [nowTick, setNowTick] = useState(0);
-  const [currentDate, setCurrentDate] = useState(() =>
+  const [currentDate, updateCurrentDate] = useState(() =>
     localDate(Date.now(), appSettings.timezone),
   );
+  const setCurrentDate = (date) => {
+    if (dateSchema.safeParse(date).success) updateCurrentDate(date);
+  };
   const [activeTab, setActiveTab] = useState("dashboard");
   const [formData, setFormData] = useState({
     fastingStart: "",
@@ -106,44 +115,17 @@ export default () => {
     const minutes = totalMinutes % 60;
     return `${hours}h ${minutes}m`;
   };
-  const getNextFastPrediction = () => {
-    const targetTime = appSettings.fastingStartTime || "16:00";
-    const [targetH, targetM] = targetTime.split(":").map(Number);
-    const targetTotalMin = targetH * 60 + targetM;
-    const [hour, minute] = getCurrentTimeHHMM().split(":").map(Number);
-    const nowTotalMin = hour * 60 + minute;
-    const diffMin = targetTotalMin - nowTotalMin; // negative = overdue, positive = time remaining
-
-    const isOverdue = diffMin <= 0;
-    const absMin = Math.abs(diffMin);
-    const hoursPart = Math.floor(absMin / 60);
-    const minutesPart = absMin % 60;
-    let urgency = "gray";
-    if (diffMin <= -60) urgency = "red";
-    else if (diffMin <= 0) urgency = "yellow";
-    else if (diffMin <= 60) urgency = "green";
-    return {
-      time: targetTime,
-      hoursPart,
-      minutesPart,
-      isOverdue,
-      urgency,
-    };
-  };
-  const getFastTargetEnd = (startTime) => {
-    const goalHours = appSettings.fastingGoalHours || 16;
-    const [h, m] = startTime.split(":").map(Number);
-    const totalMin = h * 60 + m + goalHours * 60;
-    const targetMin = totalMin % 1440;
-    const nextDay = totalMin >= 1440;
-    const targetH = Math.floor(targetMin / 60);
-    const targetM = targetMin % 60;
-    const time = `${String(targetH).padStart(2, "0")}:${String(targetM).padStart(2, "0")}`;
-    return {
-      time,
-      nextDay,
-    };
-  };
+  const getNextFastPrediction = () =>
+    fastReminder(
+      appSettings.fastingStartTime,
+      appSettings.timezone,
+      Date.now(),
+    );
+  const getFastTargetEnd = (
+    startTimestampMs,
+    timezone = appSettings.timezone,
+    now = Date.now(),
+  ) => fastGoal(startTimestampMs, appSettings.fastingGoalHours, timezone, now);
   const formatTime12h = (time24) => {
     if (!time24 || time24 === "No time set") return time24 || "No time set";
     const [hStr, mStr] = time24.split(":");
@@ -173,7 +155,7 @@ export default () => {
       const dayWeights = entries[d] && entries[d].weight;
       if (dayWeights && dayWeights.length > 0) {
         return {
-          entry: dayWeights[dayWeights.length - 1],
+          entry: latestWeight(dayWeights),
           date: d,
         };
       }
@@ -317,7 +299,7 @@ export default () => {
     dates.forEach((d) => {
       const dayWeights = entries[d] && entries[d].weight;
       if (dayWeights && dayWeights.length > 0) {
-        const latest = dayWeights[dayWeights.length - 1];
+        const latest = latestWeight(dayWeights);
         labels.push(
           parseLocalDate(d).toLocaleDateString("en-US", {
             month: "short",
@@ -431,7 +413,7 @@ export default () => {
             day: "numeric",
           }),
         );
-        dataPoints.push(Math.round(totalHours * 10) / 10);
+        dataPoints.push(totalHours);
       }
     });
     if (fastingChartInstanceRef.current) {
@@ -507,9 +489,13 @@ export default () => {
   const [editActiveFastTime, setEditActiveFastTime] = useState("");
   const [editingCategory, setEditingCategory] = useState(null);
   const [editData, setEditData] = useState({});
+  const [editDate, setEditDate] = useState("");
+  const [editSourceDate, setEditSourceDate] = useState("");
   const startEdit = (category, entry) => {
     setEditingCategory(category);
     setEditingId(entry.id);
+    setEditDate(dateKey);
+    setEditSourceDate(dateKey);
     setEditData({
       ...entry,
     });
@@ -520,24 +506,44 @@ export default () => {
     setEditData({});
   };
   const saveEdit = async (category) => {
+    const targetDate = category === "symptoms" ? editDate : editSourceDate;
     if (
-      !(await setEntries((prev) => ({
-        ...prev,
-        [dateKey]: {
-          ...prev[dateKey],
-          [category]: prev[dateKey][category].map((item) =>
-            item.id === editingId
-              ? {
-                  ...item,
-                  ...editData,
-                }
-              : item,
-          ),
-        },
-      })))
+      !(await setEntries((prev) => {
+        const source = prev[editSourceDate] ?? {};
+        const items = source[category] ?? [];
+        const entry = items.find((item) => item.id === editingId);
+        if (!entry)
+          throw new Error(
+            "This entry is no longer available. Reload your tracker.",
+          );
+        const updated = { ...entry, ...editData };
+        if (targetDate === editSourceDate)
+          return {
+            ...prev,
+            [editSourceDate]: {
+              ...source,
+              [category]: items.map((item) =>
+                item.id === editingId ? updated : item,
+              ),
+            },
+          };
+        // Dates belong to the day/row, never to the entry's data payload.
+        return {
+          ...prev,
+          [editSourceDate]: {
+            ...source,
+            [category]: items.filter((item) => item.id !== editingId),
+          },
+          [targetDate]: {
+            ...prev[targetDate],
+            [category]: [...(prev[targetDate]?.[category] ?? []), updated],
+          },
+        };
+      }))
     )
       return false;
     cancelEdit();
+    setCurrentDate(targetDate);
     setActiveTab("timeline");
     return true;
   };
@@ -547,11 +553,18 @@ export default () => {
 
   // Calculate fasting status
   const getFastingStatus = () => {
-    const fast = todayData.fasting?.[0];
+    const fast = todayData.fasting
+      ?.slice()
+      .sort((a, b) => b.endTimestampMs - a.endTimestampMs)[0];
     if (!fast) return null;
     const hours = fastHours(fast.startTimestampMs, fast.endTimestampMs);
     return {
       hours: Math.round(hours * 10) / 10,
+      goal: getFastTargetEnd(
+        fast.startTimestampMs,
+        fast.timezone,
+        fast.endTimestampMs,
+      ),
       start: fast.start,
       end: fast.end,
     };
@@ -824,14 +837,16 @@ export default () => {
       } else {
         // Same-day fast — both started and ended genuinely happened today, so show both, editable.
         // No green highlight here — that's reserved for a fast that's currently active.
-        const target = entry.start ? getFastTargetEnd(entry.start) : null;
+        const target = entry.start
+          ? getFastTargetEnd(entry.startTimestampMs, entry.timezone)
+          : null;
         items.push({
           id: "fast-start-" + entry.id,
           time: entry.start || null,
           icon: "⏳",
           label: "✅ Fast started",
           detail: target
-            ? `until ${formatTime12h(target.time)}${target.nextDay ? " tomorrow" : ""}`
+            ? `until ${formatTime12h(target.time)} ${target.dayLabel}`
             : "",
           category: "fasting",
           entry: entry,
@@ -870,7 +885,7 @@ export default () => {
     // always shown on the day it actually began.
     if (activeFast && activeFast.startDateKey === dateKey) {
       const target = activeFast.startTime
-        ? getFastTargetEnd(activeFast.startTime)
+        ? getFastTargetEnd(activeFast.startTimestampMs, activeFast.timezone)
         : null;
       items.push({
         id: "fast-active-start",
@@ -878,7 +893,7 @@ export default () => {
         icon: "⏳",
         label: "✅ Fast started",
         detail: target
-          ? `until ${formatTime12h(target.time)}${target.nextDay ? " tomorrow" : ""}`
+          ? `until ${formatTime12h(target.time)} ${target.dayLabel}`
           : "",
         category: null,
         entry: null,
@@ -977,6 +992,8 @@ export default () => {
     startEdit,
     cancelEdit,
     saveEdit,
+    editDate,
+    setEditDate,
     isEditing,
     todayData,
     getFastingStatus,

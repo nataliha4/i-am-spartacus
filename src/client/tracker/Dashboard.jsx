@@ -1,3 +1,4 @@
+import { latestWeight } from "../../shared/selectors";
 export default function Dashboard({ model }) {
   const {
     styles,
@@ -111,19 +112,15 @@ export default function Dashboard({ model }) {
             ) : (
               (() => {
                 const goalHours = appSettings.fastingGoalHours || 16;
-                const elapsedMs = Date.now() - activeFast.startTimestampMs;
-                const elapsedHoursDecimal = elapsedMs / 3600000;
-                const percent = Math.round(
-                  (elapsedHoursDecimal / goalHours) * 100,
+                const target = getFastTargetEnd(
+                  activeFast.startTimestampMs,
+                  activeFast.timezone,
                 );
-                const percentColor = percent >= 100 ? "#27ae60" : "#3498db";
-                const target = getFastTargetEnd(activeFast.startTime);
-                const targetTimestampMs =
-                  activeFast.startTimestampMs + goalHours * 3600000;
-                const remainingMs = targetTimestampMs - Date.now();
-                const remainingMin = Math.round(remainingMs / 60000);
-                const isPastGoal = remainingMin < 0;
-                const absRemainMin = Math.abs(remainingMin);
+                const elapsedHoursDecimal = target.elapsedHours;
+                const percent = target.percent;
+                const percentColor = target.goalMet ? "#27ae60" : "#3498db";
+                const isPastGoal = target.goalMet;
+                const absRemainMin = target.remainingMinutes;
                 const remHoursPart = Math.floor(absRemainMin / 60);
                 const remMinutesPart = absRemainMin % 60;
                 return (
@@ -219,7 +216,7 @@ export default function Dashboard({ model }) {
                             marginTop: "0.2rem",
                           }}
                         >
-                          Goal Progress
+                          {target.goalMet ? "Goal met" : "Goal Progress"}
                         </div>
                         <div
                           style={{
@@ -257,7 +254,7 @@ export default function Dashboard({ model }) {
                             marginTop: "0.1rem",
                           }}
                         >
-                          {target.nextDay ? "tomorrow" : "today"} ·{" "}
+                          {target.dayLabel} ·{" "}
                           {isPastGoal
                             ? `${remHoursPart}h ${remMinutesPart}m over`
                             : `${remHoursPart}h ${remMinutesPart}m left`}
@@ -344,10 +341,10 @@ export default function Dashboard({ model }) {
               {fastingStatus
                 ? (() => {
                     const goalHours = appSettings.fastingGoalHours || 16;
-                    const percent = Math.round(
-                      (fastingStatus.hours / goalHours) * 100,
-                    );
-                    const percentColor = percent >= 100 ? "#27ae60" : "#f39c12";
+                    const percent = fastingStatus.goal.percent;
+                    const percentColor = fastingStatus.goal.goalMet
+                      ? "#27ae60"
+                      : "#f39c12";
                     const next = getNextFastPrediction();
                     const urgencyColors = {
                       gray: "#999",
@@ -419,7 +416,9 @@ export default function Dashboard({ model }) {
                               marginTop: "0.2rem",
                             }}
                           >
-                            Goal Progress
+                            {fastingStatus.goal.goalMet
+                              ? "Goal met"
+                              : "Goal Progress"}
                           </div>
                           <div
                             style={{
@@ -536,7 +535,7 @@ export default function Dashboard({ model }) {
             : null;
           const hasToday = todayData.weight && todayData.weight.length > 0;
           if (hasToday) {
-            const latest = todayData.weight[todayData.weight.length - 1];
+            const latest = latestWeight(todayData.weight);
             const current = parseFloat(latest.weight);
             const diff = target !== null ? current - target : null;
             const deltaColor =

@@ -73,6 +73,7 @@ export default function Tracker() {
         </button>
         <input
           type="date"
+          aria-label="Tracker date"
           value={currentDate}
           onChange={(e) => setCurrentDate(e.target.value)}
           style={{

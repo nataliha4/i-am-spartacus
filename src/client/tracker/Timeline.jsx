@@ -226,12 +226,9 @@ export default function Timeline({ model }) {
                             </label>
                             <input
                               type="date"
-                              value={editData.date}
+                              value={model.editDate}
                               onChange={(e) =>
-                                setEditData({
-                                  ...editData,
-                                  date: e.target.value,
-                                })
+                                model.setEditDate(e.target.value)
                               }
                               style={styles.editInput}
                             />

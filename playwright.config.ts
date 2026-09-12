@@ -40,6 +40,10 @@ export default defineConfig({
       NODE_ENV: "test",
       PORT: "4173",
       DATABASE_URL: process.env.TEST_DATABASE_URL ?? "",
+      // Browser tests model separate clients via X-Forwarded-For. Only the
+      // local test runner is trusted; production rate limits remain enabled.
+      TRUST_PROXY: "true",
+      TRUSTED_PROXY_CIDRS: "127.0.0.1/32,::1/128",
     },
   },
 });
