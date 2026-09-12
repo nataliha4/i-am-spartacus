@@ -1,62 +1,87 @@
-# 💪 I AM SPARTACUS — My Daily Tracker for Health and Activity
+# 💪 I AM SPARTACUS
 
-A simple, lightweight web app to track daily health and wellness — fasting, supplements, symptoms, weight, food, medical events, and gym activity. Built as a single static page, no backend, no build tools.
+A private health and activity tracker with the original mobile interface, now backed by PostgreSQL. Each account has its own fasting sessions, symptoms, food, supplements, weight, medical events, workouts, recurring plans, and history charts.
 
-**Live app:** https://nataliha4.github.io/i-am-spartacus/
+One Bun service serves a built React PWA and a same-origin Hono API with Better Auth sessions. PostgreSQL is the source of truth; no health data is persisted in localStorage, IndexedDB, or service-worker caches. Opening the tracker and saving changes require a connection.
 
-## Features
+## Local development
 
-- **⏳ Fasting** — One-tap Start Fast / Stop Fast on the Dashboard, with a live elapsed-time counter that survives app restarts and overnight fasts. Manual fasting window entry also available.
-- **🤒 Symptoms** — Log symptoms with severity (1–5), date, time, and notes
-- **🍎 Food** — Quick timestamped notes of what you ate
-- **💊 Supplements** — Log ad-hoc supplement intake, plus set up **Recurring Supplements** (Daily or Weekly on a specific day) with a persistent daily checklist on the Dashboard
-- **🎯 Weight** — Track weight against a target, with the difference shown automatically
-- **🏋️‍♀️ Gym** — Log workouts with time and notes
-- **⛑️ Medical** — Doctor visits, blood tests, and other medical events
-- **📊 Dashboard** — Today's Summary, a persistent Supplements checklist, and a unified **Day Timeline** showing Supplements, Symptoms, Food, and Gym entries sorted chronologically
-- **✏️ Edit & Delete** — Every entry type supports inline editing and deletion
-- **📅 Date Navigation** — Review past days or plan ahead
-- **💾 Local Storage** — All data stays on your device; nothing is sent anywhere
+Prerequisites: Bun **1.4.2**, Docker for local PostgreSQL, and Node **24** for development/test tools. Production and migration images require only Bun.
 
-## No Installation Required
-
-This is a **static web app** — no build tools, no servers, no accounts beyond GitHub.
-
-Just open `index.html` in a browser, or visit the live GitHub Pages URL above.
-
-## How to Deploy Changes
-
-See **`DEPLOYMENT_GUIDE.md`** for step-by-step instructions on editing and redeploying via GitHub Pages.
-
-## File Structure
-
-```
-i-am-spartacus/
-├── index.html              # The entire app (open this in a browser)
-├── .nojekyll                # Required — tells GitHub Pages to skip Jekyll processing
-├── package.json             # Project metadata (no actual build step)
-├── README.md                 # This file
-└── DEPLOYMENT_GUIDE.md       # How to deploy via GitHub Pages
+```sh
+bun install --frozen-lockfile
+cp .env.example .env
+docker compose up -d postgres
+# Set a random BETTER_AUTH_SECRET in .env before starting.
+bun run db:migrate
+bun run account:create person@example.com "Your Name" < /path/to/password-file
+bun run dev
 ```
 
-## How It Works
+Open <http://localhost:5173>. Password input must contain 12–128 characters, optionally followed by one newline. Keep password files outside the repository and remove them when no longer needed; commands also accept piped input from a password manager. Passwords are never command-line arguments or printed by these commands.
 
-- **All code in one HTML file** — React + component code + styles
-- **React from CDN** — no build step needed
-- **localStorage for persistence** — data saved in your browser
-- **Responsive design** — built mobile-first
+Production: `bun run build`, then `bun start`. The app and separate migration command share `DATABASE_URL` and one database account. Set `BETTER_AUTH_URL` to the external origin. See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for configuration, roles, images, release order, and account recovery.
 
-## Possible Future Additions
+## Project layout
 
-- Cloud backup / multi-device sync
-- Export to CSV
-- Charts and trend analytics over time
-- Browser push notifications for supplement reminders
+- `src/client`: authentication, account/import UI, query state, and PWA integration. `tracker/` contains the extracted original screens and presentation model; these remain JavaScript/JSX to preserve the UI, with typed persistence and domain boundaries.
+- `src/shared`: TypeScript/Zod contracts, row-level change generation, dates, selectors, and import conversion. No server/auth implementation is imported into the browser.
+- `src/server` and `src/db`: Hono routes, Better Auth, transactional persistence, and Drizzle schema.
+- `drizzle` and `scripts`: reviewed SQL migrations, a separate runner, and account commands.
+- `legacy/index.html`: the old application plus an export button. Serve it at the **old application's original URL** during transfer; another origin cannot access that browser's data.
+- `tests`: domain, component, real PostgreSQL integration, and browser tests.
 
-## Questions?
+## Data transfer
 
-Reply in the chat thread if you need help with deployment or want to customize anything.
+1. Keep the old application available. Publish `legacy/index.html` as its index page on its existing origin.
+2. In the browser containing the old data, choose **Export data for the new app**. Keep the JSON file.
+3. Sign into an empty tracker account. Open **Account & data**, select the original data's timezone, and choose the export. Do this before saving settings or logging data.
+4. Review counts, warnings, and errors, then confirm. Invalid data prevents the entire import. The exporter never deletes the original browser records.
 
----
+All five storage records are covered, including checklist markers and active fasts. IDs are remapped to handle old timestamp collisions across dates/categories. Completed legacy fasts lack dates; the importer reports its same-day/previous-day inference. Repeating an identical import is harmless. Different imports into populated accounts are rejected; history merging is outside v1.
 
-**Built with React 18 (via CDN) + localStorage + GitHub Pages.**
+**Download account export** creates a versioned file that can also be imported into an empty account. Exports contain tracker data, not credentials or sessions. They complement database backups rather than replacing them.
+
+## Verification and TDD
+
+```sh
+bun run typecheck
+bun run lint
+bun run format:check
+bun run test
+bun run test:components
+bun run build
+```
+
+Create a **disposable** PostgreSQL database ending in `_test`, then configure:
+
+```sh
+export TEST_DATABASE_URL=postgres://spartacus:spartacus@localhost:5433/spartacus_test
+bun run test:integration
+bun x playwright install chromium webkit
+bun run test:e2e
+```
+
+The test role needs `CREATEDB` for isolated migration-upgrade tests. Tests apply committed SQL migrations against real PostgreSQL. Browser tests use the production frontend build on port 4173. CI supplies PostgreSQL and checks migrations, tests, builds, and both images. Successful pushes to `main` publish matching app and migration images to GHCR with commit SHA tags; pull requests only verify. JUnit and Playwright reports are retained for 14 days. See the [GitHub Actions and Pages cutover instructions](DEPLOYMENT_GUIDE.md#github-actions-and-container-releases) before merging: Pages must switch from publishing the repository root to the dedicated legacy-exporter workflow.
+
+For behavior changes, start with a failing domain/API test, implement, then refactor. Use component/browser tests for meaningful behavior such as failed saves, conflicts, account isolation, and PWA lifecycle. `bun run format` formats source; the legacy artifact is excluded.
+
+## API contract
+
+Tracker endpoints require a Better Auth cookie. Mutations require the trusted `Origin`, JSON content type, and a UUID `Idempotency-Key` (preview does not require a key).
+
+| Endpoint                                     | Behavior                                      |
+| -------------------------------------------- | --------------------------------------------- |
+| `GET /api/v1/state`                          | Consistent snapshot of this user's records    |
+| `GET /api/v1/days/:date`                     | Day records, schedules, settings, active fast |
+| `GET /api/v1/history?from=…&to=…&category=…` | Inclusive date range and optional category    |
+| `POST /api/v1/commit`                        | Atomic batch of typed row puts/deletes        |
+| `POST /api/v1/fast/start`, `/fast/stop`      | Server-timestamped transactional actions      |
+| `GET /api/v1/export`                         | Version 1 tracker export                      |
+| `POST /api/v1/import/preview`, `/import`     | Preview and all-or-nothing import             |
+
+Commits use `{ operations: [...] }`. Puts contain `{ action: "put", row }`; a row has `id`, `kind`, `date`, `category`, `data`, and `revision`. Revision `0` creates a record. Deletes contain `action`, `kind`, `id`, and `revision`. Exact contracts are in `src/shared/model.ts`. User IDs are never accepted from the client.
+
+Successful mutations return `{ rows }`; errors return `{ error: { code, message } }`. Statuses: `400` validation, `401` missing/expired session, `403` wrong origin, `409` stale revision or singleton conflict, `429` rate limited (honor `Retry-After`), and `503` unconfirmed service failure. Retry unconfirmed requests with the same key and body within seven days; after that, reload and review the current state. Reusing a key with another body is rejected. On conflict, reload/review and cancel/reopen the affected editor to use its latest revision; there is no silent overwrite.
+
+The existing UI reads a full per-user snapshot, refreshing on focus/reconnect and every 30 seconds while active. Writes change individual records. Draft editors retain their original revisions across background refreshes. Larger-scale pagination, sharing, public signup, offline edits, reminders, and Kubernetes manifests are outside v1.

@@ -1,0 +1,240 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      image_name: ${{ steps.vars.outputs.image_name }}
+      image_tag: ${{ steps.vars.outputs.commit_short_sha }}
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: spartacus
+          POSTGRES_PASSWORD: spartacus
+          POSTGRES_DB: spartacus_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U spartacus -d spartacus_test"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgres://spartacus:spartacus@localhost:5432/spartacus_test
+      DATABASE_URL: postgres://spartacus:spartacus@localhost:5432/spartacus_test
+      BETTER_AUTH_URL: http://localhost:4173
+      BETTER_AUTH_SECRET: ci-only-secret-not-for-production-at-least-32-characters
+      NODE_ENV: test
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set image names and version
+        id: vars
+        shell: bash
+        run: |
+          echo "image_name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          echo "commit_short_sha=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - name: Set up Node.js for build and browser tools
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Check formatting
+        run: bun run format:check
+      - name: Lint
+        run: bun run lint
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Check migration generation
+        run: |
+          bun run db:generate
+          test -z "$(git status --porcelain -- drizzle)"
+      - name: Prepare test reports
+        run: mkdir -p test-results
+      - name: Test domain units
+        id: unit
+        continue-on-error: true
+        run: bun run test --reporter=junit --reporter-outfile=test-results/unit.xml
+      - name: Test components
+        id: components
+        continue-on-error: true
+        run: bun run test:components --reporter=default --reporter=junit --outputFile.junit=test-results/components.xml
+      - name: Test PostgreSQL integration
+        id: integration
+        continue-on-error: true
+        run: bun run test:integration --reporter=junit --reporter-outfile=test-results/integration.xml
+      - name: Build application
+        run: bun run build
+      - name: Install Playwright browsers
+        run: bun x playwright install --with-deps chromium webkit
+      - name: Apply migrations for browser tests
+        run: bun run db:migrate
+      - name: Test browser journeys
+        id: e2e
+        continue-on-error: true
+        run: bun run test:e2e
+      - name: Enforce test results
+        if: ${{ !cancelled() }}
+        env:
+          UNIT: ${{ steps.unit.outcome }}
+          COMPONENTS: ${{ steps.components.outcome }}
+          INTEGRATION: ${{ steps.integration.outcome }}
+          E2E: ${{ steps.e2e.outcome }}
+        shell: bash
+        run: |
+          for outcome in "$UNIT" "$COMPONENTS" "$INTEGRATION" "$E2E"; do
+            if [[ "$outcome" != success ]]; then
+              echo "One or more test suites failed or did not run."
+              exit 1
+            fi
+          done
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Build migration image
+        id: migrate-image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: migrate
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: ${{ steps.vars.outputs.image_name }}-migrate:${{ steps.vars.outputs.commit_short_sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha,scope=spartacus-migrate
+          cache-to: type=gha,mode=max,scope=spartacus-migrate,ignore-error=true
+      - name: Build application image
+        id: app-image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: runtime
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: ${{ steps.vars.outputs.image_name }}:${{ steps.vars.outputs.commit_short_sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha,scope=spartacus-runtime
+          cache-to: type=gha,mode=max,scope=spartacus-runtime,ignore-error=true
+      - name: Smoke-test both images against a fresh database
+        id: smoke
+        env:
+          APP_IMAGE: ${{ steps.vars.outputs.image_name }}:${{ steps.vars.outputs.commit_short_sha }}
+          MIGRATION_IMAGE: ${{ steps.vars.outputs.image_name }}-migrate:${{ steps.vars.outputs.commit_short_sha }}
+        run: bun run test:images
+      - name: Export verified images for publication
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        env:
+          IMAGE_NAME: ${{ steps.vars.outputs.image_name }}
+          IMAGE_TAG: ${{ steps.vars.outputs.commit_short_sha }}
+        shell: bash
+        run: docker save "${IMAGE_NAME}:${IMAGE_TAG}" "${IMAGE_NAME}-migrate:${IMAGE_TAG}" | gzip > "$RUNNER_TEMP/production-images.tar.gz"
+      - name: Upload verified images
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: production-images
+          path: ${{ runner.temp }}/production-images.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+      - name: Publish verification summary
+        if: ${{ !cancelled() }}
+        env:
+          UNIT: ${{ steps.unit.outcome }}
+          COMPONENTS: ${{ steps.components.outcome }}
+          INTEGRATION: ${{ steps.integration.outcome }}
+          E2E: ${{ steps.e2e.outcome }}
+          SMOKE: ${{ steps.smoke.outcome }}
+        shell: bash
+        run: |
+          {
+            echo '## Verification'
+            echo '| Check | Outcome |'
+            echo '| --- | --- |'
+            echo "| Domain units | $UNIT |"
+            echo "| Components | $COMPONENTS |"
+            echo "| PostgreSQL integration | $INTEGRATION |"
+            echo "| Browser journeys | $E2E |"
+            echo "| Production image smoke | $SMOKE |"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload standard test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: test-results/*.xml
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload Playwright report and attachments
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/playwright-output/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  publish:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE_NAME: ${{ needs.verify.outputs.image_name }}
+      IMAGE_TAG: ${{ needs.verify.outputs.image_tag }}
+    steps:
+      # No checkout, dependency install, build, tests, or container execution
+      # occurs in this job holding the registry write token.
+      - name: Download verified images from this run
+        uses: actions/download-artifact@v8
+        with:
+          name: production-images
+          path: ${{ runner.temp }}/production-images
+      - name: Load verified images
+        run: docker load --input "$RUNNER_TEMP/production-images/production-images.tar.gz"
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push verified images
+        run: |
+          docker push "${IMAGE_NAME}-migrate:${IMAGE_TAG}"
+          docker push "${IMAGE_NAME}:${IMAGE_TAG}"
+      - name: Summarize publication
+        run: |
+          {
+            echo '## Published verified images'
+            echo "Application: \`${IMAGE_NAME}:${IMAGE_TAG}\`"
+            echo
+            echo "Migrations: \`${IMAGE_NAME}-migrate:${IMAGE_TAG}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

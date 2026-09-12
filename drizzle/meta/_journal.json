@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789228279846,
+      "tag": "0000_thankful_amazoness",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789233680961,
+      "tag": "0001_powerful_payback",
+      "breakpoints": true
+    }
+  ]
+}

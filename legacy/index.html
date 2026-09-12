@@ -1,0 +1,3555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>💪 I AM SPARTACUS 💪</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      background-color: #fafafa;
+    }
+    #root {
+      width: 100%;
+    }
+    button {
+      -webkit-appearance: none;
+      appearance: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button:focus,
+    button:focus-visible,
+    button:active {
+      outline: none !important;
+      box-shadow: none !important;
+    }
+  </style>
+</head>
+<body><div style="max-width:600px;margin:1rem auto;padding:0 1rem"><button id="export-legacy" type="button">Export data for the new app</button></div>
+  <div id="root"></div>
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const DailyTrackerApp = () => {
+      const [entries, setEntries] = useState({});
+      const [recurringSupps, setRecurringSupps] = useState({});
+      const [recurringGym, setRecurringGym] = useState({});
+      const [appSettings, setAppSettings] = useState({ targetWeight: '', fastingGoalHours: 16, fastingStartTime: '16:00' });
+      const [activeFast, setActiveFast] = useState(null);
+      const [nowTick, setNowTick] = useState(0);
+      const [currentDate, setCurrentDate] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      });
+      const [activeTab, setActiveTab] = useState('dashboard');
+      const [formData, setFormData] = useState({
+        fastingStart: '',
+        fastingEnd: '',
+        supplement: '',
+        supplementTime: '',
+        supplementNotes: '',
+        symptom: '',
+        symptomLevel: 3,
+        symptomNotes: '',
+        symptomDate: '',
+        symptomTime: '',
+        weight: '',
+        targetWeight: '',
+        foodNote: '',
+        foodTime: '',
+        foodNotes: '',
+        medicalEvent: '',
+        medicalNotes: '',
+        medicalTime: '',
+        gymActivity: '',
+        gymNotes: '',
+        gymTime: '',
+        recurringName: '',
+        recurringTime: '',
+        recurringFrequency: 'daily',
+        recurringDayOfWeek: '1',
+        recurringGymName: '',
+        recurringGymTime: '',
+        recurringGymFrequency: 'daily',
+        recurringGymDayOfWeek: '1',
+      });
+
+      // Load data from localStorage
+      useEffect(() => {
+        const saved = localStorage.getItem('trackerData');
+        if (saved) {
+          try {
+            setEntries(JSON.parse(saved));
+          } catch (e) {
+            console.error('Failed to load saved data');
+          }
+        }
+        const savedRecurring = localStorage.getItem('recurringSupps');
+        if (savedRecurring) {
+          try {
+            setRecurringSupps(JSON.parse(savedRecurring));
+          } catch (e) {
+            console.error('Failed to load recurring supps');
+          }
+        }
+        const savedRecurringGym = localStorage.getItem('recurringGym');
+        if (savedRecurringGym) {
+          try {
+            setRecurringGym(JSON.parse(savedRecurringGym));
+          } catch (e) {
+            console.error('Failed to load recurring gym');
+          }
+        }
+        const savedActiveFast = localStorage.getItem('activeFast');
+        if (savedActiveFast) {
+          try {
+            setActiveFast(JSON.parse(savedActiveFast));
+          } catch (e) {
+            console.error('Failed to load active fast');
+          }
+        }
+        const savedSettings = localStorage.getItem('appSettings');
+        if (savedSettings) {
+          try {
+            setAppSettings(JSON.parse(savedSettings));
+          } catch (e) {
+            console.error('Failed to load app settings');
+          }
+        }
+      }, []);
+
+      // Tick every 30s so the live elapsed-fasting display stays current
+      useEffect(() => {
+        const interval = setInterval(() => setNowTick(t => t + 1), 30000);
+        return () => clearInterval(interval);
+      }, []);
+
+      // Save active fast to localStorage
+      useEffect(() => {
+        if (activeFast) {
+          localStorage.setItem('activeFast', JSON.stringify(activeFast));
+        } else {
+          localStorage.removeItem('activeFast');
+        }
+      }, [activeFast]);
+
+      // Save to localStorage whenever entries change
+      useEffect(() => {
+        localStorage.setItem('trackerData', JSON.stringify(entries));
+      }, [entries]);
+
+      // Save recurring supps to localStorage
+      useEffect(() => {
+        localStorage.setItem('recurringSupps', JSON.stringify(recurringSupps));
+      }, [recurringSupps]);
+
+      // Save recurring gym to localStorage
+      useEffect(() => {
+        localStorage.setItem('recurringGym', JSON.stringify(recurringGym));
+      }, [recurringGym]);
+
+      // Save app settings to localStorage
+      useEffect(() => {
+        localStorage.setItem('appSettings', JSON.stringify(appSettings));
+      }, [appSettings]);
+
+      const dateKey = currentDate;
+
+      // Parse a 'YYYY-MM-DD' string as a LOCAL date (avoids the classic JS bug where
+      // new Date('YYYY-MM-DD') is parsed as UTC midnight and can display as the previous day)
+      const parseLocalDate = (dateStr) => {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        return new Date(y, m - 1, d);
+      };
+
+      // Format a Date object as 'YYYY-MM-DD' using LOCAL date parts (avoids toISOString(),
+      // which converts to UTC first and can shift the date near midnight in some timezones)
+      const formatDateLocal = (date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      };
+
+      const getCurrentTimeHHMM = () => {
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        return `${hh}:${mm}`;
+      };
+
+      const startFast = () => {
+        const now = new Date();
+        setActiveFast({
+          startDateKey: formatDateLocal(now),
+          startTime: getCurrentTimeHHMM(),
+          startTimestampMs: now.getTime(),
+        });
+      };
+
+      const stopFast = () => {
+        if (!activeFast) return;
+        const endTime = getCurrentTimeHHMM();
+        const timestamp = new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        });
+        const endKey = formatDateLocal(new Date());
+        setEntries(prev => {
+          const prevDay = prev[endKey] || {};
+          const prevFasting = Array.isArray(prevDay.fasting) ? prevDay.fasting : [];
+          return {
+            ...prev,
+            [endKey]: {
+              ...prevDay,
+              fasting: [...prevFasting, { start: activeFast.startTime, end: endTime, timestamp, id: Date.now() }],
+            },
+          };
+        });
+        setActiveFast(null);
+      };
+
+      const saveActiveFastStartTime = (newTime) => {
+        if (!activeFast || !newTime) return;
+        const startDate = parseLocalDate(activeFast.startDateKey);
+        const [hh, mm] = newTime.split(':').map(Number);
+        startDate.setHours(hh, mm, 0, 0);
+        setActiveFast({
+          ...activeFast,
+          startTime: newTime,
+          startTimestampMs: startDate.getTime(),
+        });
+      };
+
+      const getElapsedFastLabel = () => {
+        if (!activeFast) return '';
+        const elapsedMs = Date.now() - activeFast.startTimestampMs;
+        const totalMinutes = Math.max(0, Math.floor(elapsedMs / 60000));
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        return `${hours}h ${minutes}m`;
+      };
+
+      const getNextFastPrediction = () => {
+        const targetTime = appSettings.fastingStartTime || '16:00';
+        const [targetH, targetM] = targetTime.split(':').map(Number);
+        const targetTotalMin = targetH * 60 + targetM;
+
+        const now = new Date();
+        const nowTotalMin = now.getHours() * 60 + now.getMinutes();
+        const diffMin = targetTotalMin - nowTotalMin; // negative = overdue, positive = time remaining
+
+        const isOverdue = diffMin <= 0;
+        const absMin = Math.abs(diffMin);
+        const hoursPart = Math.floor(absMin / 60);
+        const minutesPart = absMin % 60;
+
+        let urgency = 'gray';
+        if (diffMin <= -60) urgency = 'red';
+        else if (diffMin <= 0) urgency = 'yellow';
+        else if (diffMin <= 60) urgency = 'green';
+
+        return { time: targetTime, hoursPart, minutesPart, isOverdue, urgency };
+      };
+
+      const getFastTargetEnd = (startTime) => {
+        const goalHours = appSettings.fastingGoalHours || 16;
+        const [h, m] = startTime.split(':').map(Number);
+        const totalMin = h * 60 + m + goalHours * 60;
+        const targetMin = totalMin % 1440;
+        const nextDay = totalMin >= 1440;
+        const targetH = Math.floor(targetMin / 60);
+        const targetM = targetMin % 60;
+        const time = `${String(targetH).padStart(2, '0')}:${String(targetM).padStart(2, '0')}`;
+        return { time, nextDay };
+      };
+
+      const formatTime12h = (time24) => {
+        if (!time24 || time24 === 'No time set') return time24 || 'No time set';
+        const [hStr, mStr] = time24.split(':');
+        let h = parseInt(hStr, 10);
+        const suffix = h >= 12 ? 'PM' : 'AM';
+        h = h % 12;
+        if (h === 0) h = 12;
+        return `${h}:${mStr} ${suffix}`;
+      };
+
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const selectedDayOfWeek = parseLocalDate(currentDate).getDay();
+
+      const isSuppScheduledToday = (supp) => {
+        if (!supp.frequency || supp.frequency === 'daily') return true;
+        if (supp.frequency === 'weekly') return parseInt(supp.dayOfWeek, 10) === selectedDayOfWeek;
+        return true;
+      };
+
+      const getTodayEntries = () => {
+        return entries[dateKey] || {};
+      };
+
+      const getMostRecentWeight = () => {
+        const dates = Object.keys(entries).sort().reverse();
+        for (const d of dates) {
+          const dayWeights = entries[d] && entries[d].weight;
+          if (dayWeights && dayWeights.length > 0) {
+            return { entry: dayWeights[dayWeights.length - 1], date: d };
+          }
+        }
+        return null;
+      };
+
+      const buildDayItemsForHistory = (dayData, filterTypes) => {
+        const items = [];
+        const push = (category, icon, label, time, detail) => {
+          if (filterTypes.length > 0 && !filterTypes.includes(category)) return;
+          items.push({ category, icon, label, time: time || null, detail: detail || '' });
+        };
+
+        (dayData.supplements || []).forEach(e => push('supplements', '💊', e.name, e.time, e.notes));
+        (dayData.symptoms || []).forEach(e => push('symptoms', '🤒', `${e.symptom} — Level ${e.level}/5`, e.time, e.notes));
+        (dayData.food || []).forEach(e => push('food', '🍎', e.note, e.time, e.notes));
+        (dayData.gym || []).forEach(e => push('gym', '🏋️‍♀️', e.activity, e.time, e.notes));
+        (dayData.medical || []).forEach(e => push('medical', '⛑️', e.event, e.time, e.notes));
+        (dayData.weight || []).forEach(e => push('weight', '⚖️', `Weight: ${e.weight} kg`, e.time, e.target ? `Target: ${e.target} kg` : ''));
+        (dayData.fasting || []).forEach(e => {
+          const label = `Fasted ${e.start ? formatTime12h(e.start) : '?'} – ${e.end ? formatTime12h(e.end) : '?'}`;
+          push('fasting', '⏳', label, e.end, '');
+        });
+
+        items.sort((a, b) => {
+          if (!a.time && !b.time) return 0;
+          if (!a.time) return 1;
+          if (!b.time) return -1;
+          return a.time.localeCompare(b.time);
+        });
+        return items;
+      };
+
+      const getSymptomFoodContext = (dateFrom, dateTo, windowHours, minSeverity) => {
+        const dates = Object.keys(entries)
+          .filter(d => (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo))
+          .sort()
+          .reverse();
+
+        const dayGroups = [];
+
+        dates.forEach(d => {
+          const symptoms = (entries[d] && entries[d].symptoms || []).filter(s => s.time && s.time !== 'No time set' && s.level >= minSeverity);
+          if (symptoms.length === 0) return;
+
+          const dayFoods = (entries[d] && entries[d].food || []).filter(f => f.time && f.time !== 'No time set');
+
+          const prevDateObj = parseLocalDate(d);
+          prevDateObj.setDate(prevDateObj.getDate() - 1);
+          const prevDateKey = formatDateLocal(prevDateObj);
+          const prevDayFoods = (entries[prevDateKey] && entries[prevDateKey].food || []).filter(f => f.time && f.time !== 'No time set');
+
+          const symptomRows = symptoms
+            .slice()
+            .sort((a, b) => a.time.localeCompare(b.time))
+            .map(symptom => {
+              const [sh, sm] = symptom.time.split(':').map(Number);
+              const symptomAbsMin = sh * 60 + sm;
+
+              const candidates = [];
+
+              dayFoods.forEach(f => {
+                const [fh, fm] = f.time.split(':').map(Number);
+                const diffMin = symptomAbsMin - (fh * 60 + fm);
+                if (diffMin >= 0 && diffMin <= windowHours * 60) {
+                  candidates.push({ food: f, diffMin });
+                }
+              });
+
+              prevDayFoods.forEach(f => {
+                const [fh, fm] = f.time.split(':').map(Number);
+                const diffMin = symptomAbsMin + (1440 - (fh * 60 + fm));
+                if (diffMin >= 0 && diffMin <= windowHours * 60) {
+                  candidates.push({ food: f, diffMin });
+                }
+              });
+
+              candidates.sort((a, b) => a.diffMin - b.diffMin);
+
+              return { symptom, precedingFoods: candidates };
+            });
+
+          dayGroups.push({ date: d, symptomRows });
+        });
+
+        return dayGroups;
+      };
+
+      const addEntry = (category, data) => {
+        const timestamp = new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        });
+
+        setEntries(prev => ({
+          ...prev,
+          [dateKey]: {
+            ...prev[dateKey],
+            [category]: Array.isArray(prev[dateKey]?.[category])
+              ? [...prev[dateKey][category], { ...data, timestamp, id: Date.now() }]
+              : [{ ...data, timestamp, id: Date.now() }],
+          },
+        }));
+
+        // Reset form
+        setFormData({
+          fastingStart: '',
+          fastingEnd: '',
+          supplement: '',
+          supplementTime: '',
+          supplementNotes: '',
+          symptom: '',
+          symptomLevel: 3,
+          symptomNotes: '',
+          symptomDate: '',
+          symptomTime: '',
+          weight: '',
+          targetWeight: '',
+          foodNote: '',
+          foodTime: '',
+          foodNotes: '',
+          medicalEvent: '',
+          medicalNotes: '',
+          medicalTime: '',
+          gymActivity: '',
+          gymNotes: '',
+          gymTime: '',
+          recurringName: '',
+          recurringTime: '',
+          recurringFrequency: 'daily',
+          recurringDayOfWeek: '1',
+          recurringGymName: '',
+          recurringGymTime: '',
+          recurringGymFrequency: 'daily',
+          recurringGymDayOfWeek: '1',
+        });
+        setActiveTab('timeline');
+      };
+
+      const deleteEntry = (category, id) => {
+        setEntries(prev => ({
+          ...prev,
+          [dateKey]: {
+            ...prev[dateKey],
+            [category]: prev[dateKey][category].filter(item => item.id !== id),
+          },
+        }));
+        setActiveTab('timeline');
+      };
+
+      const [editingId, setEditingId] = useState(null);
+      const [timelineEditingKey, setTimelineEditingKey] = useState(null);
+      const [addEntryType, setAddEntryType] = useState(null);
+      const [editingActiveFastStart, setEditingActiveFastStart] = useState(false);
+      const [settingsSavedFlash, setSettingsSavedFlash] = useState(null);
+      const [showWeightEntryForm, setShowWeightEntryForm] = useState(false);
+      const [showAddRecurringSupp, setShowAddRecurringSupp] = useState(false);
+      const [showAddRecurringGym, setShowAddRecurringGym] = useState(false);
+      const [historyTypeFilters, setHistoryTypeFilters] = useState([]);
+      const [historyDateFrom, setHistoryDateFrom] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 7);
+        return formatDateLocal(d);
+      });
+      const [historyDateTo, setHistoryDateTo] = useState(() => formatDateLocal(new Date()));
+      const [historyView, setHistoryView] = useState('list');
+      const [correlationWindowHours, setCorrelationWindowHours] = useState(6);
+      const [minSeverityFilter, setMinSeverityFilter] = useState(1);
+      const weightChartRef = useRef(null);
+      const weightChartInstanceRef = useRef(null);
+      const fastingChartRef = useRef(null);
+      const fastingChartInstanceRef = useRef(null);
+
+      useEffect(() => {
+        if (activeTab !== 'history' || historyView !== 'charts') return;
+        if (!weightChartRef.current) return;
+
+        const dates = Object.keys(entries)
+          .filter(d => (!historyDateFrom || d >= historyDateFrom) && (!historyDateTo || d <= historyDateTo))
+          .sort();
+
+        const labels = [];
+        const dataPoints = [];
+        dates.forEach(d => {
+          const dayWeights = entries[d] && entries[d].weight;
+          if (dayWeights && dayWeights.length > 0) {
+            const latest = dayWeights[dayWeights.length - 1];
+            labels.push(parseLocalDate(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            dataPoints.push(parseFloat(latest.weight));
+          }
+        });
+
+        if (weightChartInstanceRef.current) {
+          weightChartInstanceRef.current.destroy();
+          weightChartInstanceRef.current = null;
+        }
+
+        if (dataPoints.length === 0) return;
+
+        const target = appSettings.targetWeight ? parseFloat(appSettings.targetWeight) : null;
+        const datasets = [
+          {
+            label: 'Weight (kg)',
+            data: dataPoints,
+            borderColor: '#333',
+            backgroundColor: 'rgba(51, 51, 51, 0.1)',
+            tension: 0.3,
+            pointRadius: 4,
+            pointBackgroundColor: '#333',
+            fill: true,
+          },
+        ];
+        if (target !== null) {
+          datasets.push({
+            label: 'Target',
+            data: labels.map(() => target),
+            borderColor: '#27ae60',
+            borderDash: [6, 6],
+            pointRadius: 0,
+            fill: false,
+          });
+        }
+
+        weightChartInstanceRef.current = new Chart(weightChartRef.current, {
+          type: 'line',
+          data: { labels, datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: target !== null, position: 'bottom' },
+            },
+            scales: {
+              y: { ticks: { callback: v => `${v} kg` } },
+              x: {
+                ticks: {
+                  autoSkip: true,
+                  maxTicksLimit: 10,
+                  maxRotation: 45,
+                  minRotation: 0,
+                },
+              },
+            },
+          },
+        });
+
+        return () => {
+          if (weightChartInstanceRef.current) {
+            weightChartInstanceRef.current.destroy();
+            weightChartInstanceRef.current = null;
+          }
+        };
+      }, [activeTab, historyView, entries, historyDateFrom, historyDateTo, appSettings.targetWeight]);
+
+      useEffect(() => {
+        if (activeTab !== 'history' || historyView !== 'charts') return;
+        if (!fastingChartRef.current) return;
+
+        const dates = Object.keys(entries)
+          .filter(d => (!historyDateFrom || d >= historyDateFrom) && (!historyDateTo || d <= historyDateTo))
+          .sort();
+
+        const goalHours = appSettings.fastingGoalHours || 16;
+        const labels = [];
+        const dataPoints = [];
+        dates.forEach(d => {
+          const dayFasts = entries[d] && entries[d].fasting;
+          if (dayFasts && dayFasts.length > 0) {
+            let totalHours = 0;
+            dayFasts.forEach(f => {
+              if (!f.start || !f.end) return;
+              const [sh, sm] = f.start.split(':').map(Number);
+              const [eh, em] = f.end.split(':').map(Number);
+              totalHours += ((eh * 60 + em) - (sh * 60 + sm) + 1440) % 1440 / 60;
+            });
+            labels.push(parseLocalDate(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            dataPoints.push(Math.round(totalHours * 10) / 10);
+          }
+        });
+
+        if (fastingChartInstanceRef.current) {
+          fastingChartInstanceRef.current.destroy();
+          fastingChartInstanceRef.current = null;
+        }
+
+        if (dataPoints.length === 0) return;
+
+        const barColors = dataPoints.map(h => (h >= goalHours ? '#27ae60' : '#f39c12'));
+
+        fastingChartInstanceRef.current = new Chart(fastingChartRef.current, {
+          data: {
+            labels,
+            datasets: [
+              {
+                type: 'bar',
+                label: 'Hours Fasted',
+                data: dataPoints,
+                backgroundColor: barColors,
+              },
+              {
+                type: 'line',
+                label: `Goal (${goalHours}h)`,
+                data: labels.map(() => goalHours),
+                borderColor: '#333',
+                borderDash: [6, 6],
+                pointRadius: 0,
+                fill: false,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: true, position: 'bottom' },
+            },
+            scales: {
+              y: { ticks: { callback: v => `${v}h` } },
+              x: {
+                ticks: {
+                  autoSkip: true,
+                  maxTicksLimit: 10,
+                  maxRotation: 45,
+                  minRotation: 0,
+                },
+              },
+            },
+          },
+        });
+
+        return () => {
+          if (fastingChartInstanceRef.current) {
+            fastingChartInstanceRef.current.destroy();
+            fastingChartInstanceRef.current = null;
+          }
+        };
+      }, [activeTab, historyView, entries, historyDateFrom, historyDateTo, appSettings.fastingGoalHours]);
+
+      const flashSettingsSaved = (fieldKey) => {
+        setSettingsSavedFlash(fieldKey);
+        setTimeout(() => {
+          setSettingsSavedFlash(prev => (prev === fieldKey ? null : prev));
+        }, 1500);
+      };
+      const [editActiveFastTime, setEditActiveFastTime] = useState('');
+      const [editingCategory, setEditingCategory] = useState(null);
+      const [editData, setEditData] = useState({});
+
+      const startEdit = (category, entry) => {
+        setEditingCategory(category);
+        setEditingId(entry.id);
+        setEditData({ ...entry });
+      };
+
+      const cancelEdit = () => {
+        setEditingCategory(null);
+        setEditingId(null);
+        setEditData({});
+      };
+
+      const saveEdit = (category) => {
+        setEntries(prev => ({
+          ...prev,
+          [dateKey]: {
+            ...prev[dateKey],
+            [category]: prev[dateKey][category].map(item =>
+              item.id === editingId ? { ...item, ...editData } : item
+            ),
+          },
+        }));
+        cancelEdit();
+        setActiveTab('timeline');
+      };
+
+      const isEditing = (category, id) => editingCategory === category && editingId === id;
+
+      const todayData = getTodayEntries();
+
+      // Calculate fasting status
+      const getFastingStatus = () => {
+        const fast = todayData.fasting?.[0];
+        if (!fast) return null;
+
+        const start = new Date(`${currentDate}T${fast.start}`);
+        const end = new Date(`${currentDate}T${fast.end}`);
+        let hours = (end - start) / (1000 * 60 * 60);
+        // Handle overnight fasts regardless of which day the entry is filed under
+        while (hours < 0) hours += 24;
+
+        return { hours: Math.round(hours * 10) / 10, start: fast.start, end: fast.end };
+      };
+
+      const isRecurringFailed = (key) => {
+        const failed = todayData.failedRecurring || [];
+        return failed.includes(key);
+      };
+
+      const markRecurringFailed = (key) => {
+        setEntries(prev => {
+          const prevDay = prev[dateKey] || {};
+          return {
+            ...prev,
+            [dateKey]: {
+              ...prevDay,
+              failedRecurring: [...(prevDay.failedRecurring || []), key],
+            },
+          };
+        });
+      };
+
+      const clearRecurringFailed = (key) => {
+        setEntries(prev => {
+          const prevDay = prev[dateKey] || {};
+          return {
+            ...prev,
+            [dateKey]: {
+              ...prevDay,
+              failedRecurring: (prevDay.failedRecurring || []).filter(k => k !== key),
+            },
+          };
+        });
+      };
+
+      const isRecurringDone = (supp) => {
+        const dismissed = todayData.dueDismissed || [];
+        return dismissed.includes(`recurring-${supp.id}`);
+      };
+
+      const uncheckRecurring = (supp) => {
+        const key = `recurring-${supp.id}`;
+        setEntries(prev => {
+          const prevDay = prev[dateKey] || {};
+          return {
+            ...prev,
+            [dateKey]: {
+              ...prevDay,
+              dueDismissed: (prevDay.dueDismissed || []).filter(k => k !== key),
+            },
+          };
+        });
+      };
+
+      const confirmRecurringDone = (supp, chosenTime, notes) => {
+        const key = `recurring-${supp.id}`;
+        const timestamp = new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        });
+        setEntries(prev => {
+          const prevDay = prev[dateKey] || {};
+          const prevSupplements = Array.isArray(prevDay.supplements) ? prevDay.supplements : [];
+          const newEntryId = Date.now();
+          return {
+            ...prev,
+            [dateKey]: {
+              ...prevDay,
+              supplements: [...prevSupplements, { name: supp.name, time: chosenTime, notes: notes || '', timestamp, id: newEntryId }],
+              dueDismissed: [...(prevDay.dueDismissed || []), key, `logged-${newEntryId}`],
+            },
+          };
+        });
+      };
+
+      const [confirmingSuppId, setConfirmingSuppId] = useState(null);
+      const [confirmNotes, setConfirmNotes] = useState('');
+      const [confirmTime, setConfirmTime] = useState('');
+      const [confirmingUncheckSuppId, setConfirmingUncheckSuppId] = useState(null);
+      const [confirmingUncheckGymId, setConfirmingUncheckGymId] = useState(null);
+
+      const [editingRecurringId, setEditingRecurringId] = useState(null);
+      const [editRecurringData, setEditRecurringData] = useState({});
+
+      const startEditRecurring = (supp) => {
+        setEditingRecurringId(supp.id);
+        setEditRecurringData({ ...supp });
+      };
+
+      const cancelEditRecurring = () => {
+        setEditingRecurringId(null);
+        setEditRecurringData({});
+      };
+
+      const saveEditRecurring = () => {
+        setRecurringSupps(prev => ({
+          ...prev,
+          [editingRecurringId]: {
+            ...prev[editingRecurringId],
+            name: editRecurringData.name,
+            time: editRecurringData.time,
+            frequency: editRecurringData.frequency || 'daily',
+            dayOfWeek: editRecurringData.frequency === 'weekly' ? editRecurringData.dayOfWeek : undefined,
+          },
+        }));
+        cancelEditRecurring();
+      };
+
+      const deleteRecurring = (id) => {
+        setRecurringSupps(prev => {
+          const newSupps = { ...prev };
+          delete newSupps[id];
+          return newSupps;
+        });
+        if (editingRecurringId === id) cancelEditRecurring();
+      };
+
+      const isRecurringGymDone = (item) => {
+        const dismissed = todayData.dueDismissed || [];
+        return dismissed.includes(`recurring-gym-${item.id}`);
+      };
+
+      const uncheckRecurringGym = (item) => {
+        const key = `recurring-gym-${item.id}`;
+        setEntries(prev => {
+          const prevDay = prev[dateKey] || {};
+          return {
+            ...prev,
+            [dateKey]: {
+              ...prevDay,
+              dueDismissed: (prevDay.dueDismissed || []).filter(k => k !== key),
+            },
+          };
+        });
+      };
+
+      const confirmRecurringGymDone = (item, chosenTime, notes) => {
+        const key = `recurring-gym-${item.id}`;
+        const timestamp = new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        });
+        setEntries(prev => {
+          const prevDay = prev[dateKey] || {};
+          const prevGym = Array.isArray(prevDay.gym) ? prevDay.gym : [];
+          const newEntryId = Date.now();
+          return {
+            ...prev,
+            [dateKey]: {
+              ...prevDay,
+              gym: [...prevGym, { activity: item.name, time: chosenTime, notes: notes || '', timestamp, id: newEntryId }],
+              dueDismissed: [...(prevDay.dueDismissed || []), key],
+            },
+          };
+        });
+      };
+
+      const [confirmingGymId, setConfirmingGymId] = useState(null);
+      const [confirmGymTime, setConfirmGymTime] = useState('');
+
+      const [editingGymRecurringId, setEditingGymRecurringId] = useState(null);
+      const [editGymRecurringData, setEditGymRecurringData] = useState({});
+
+      const startEditRecurringGym = (item) => {
+        setEditingGymRecurringId(item.id);
+        setEditGymRecurringData({ ...item });
+      };
+
+      const cancelEditRecurringGym = () => {
+        setEditingGymRecurringId(null);
+        setEditGymRecurringData({});
+      };
+
+      const saveEditRecurringGym = () => {
+        setRecurringGym(prev => ({
+          ...prev,
+          [editingGymRecurringId]: {
+            ...prev[editingGymRecurringId],
+            name: editGymRecurringData.name,
+            time: editGymRecurringData.time,
+            frequency: editGymRecurringData.frequency || 'daily',
+            dayOfWeek: editGymRecurringData.frequency === 'weekly' ? editGymRecurringData.dayOfWeek : undefined,
+          },
+        }));
+        cancelEditRecurringGym();
+      };
+
+      const deleteRecurringGym = (id) => {
+        setRecurringGym(prev => {
+          const newItems = { ...prev };
+          delete newItems[id];
+          return newItems;
+        });
+        if (editingGymRecurringId === id) cancelEditRecurringGym();
+      };
+
+      const fastingStatus = getFastingStatus();
+
+      const getDayTimeline = () => {
+        const items = [];
+
+        (todayData.supplements || []).forEach(entry => {
+          items.push({
+            id: 'supp-' + entry.id,
+            time: entry.time && entry.time !== 'No time set' ? entry.time : null,
+            icon: '💊',
+            label: entry.name,
+            detail: entry.notes || '',
+            category: 'supplements',
+            entry: entry,
+          });
+        });
+
+        (todayData.medical || []).forEach(entry => {
+          items.push({
+            id: 'medical-' + entry.id,
+            time: entry.time && entry.time !== 'No time set' ? entry.time : null,
+            icon: '⛑️',
+            label: entry.event,
+            detail: entry.notes || '',
+            category: 'medical',
+            entry: entry,
+          });
+        });
+
+        (todayData.weight || []).forEach(entry => {
+          items.push({
+            id: 'weight-' + entry.id,
+            time: entry.time && entry.time !== 'No time set' ? entry.time : null,
+            icon: '🎯',
+            label: `Weight: ${entry.weight} kg`,
+            detail: entry.target ? `Target: ${entry.target} kg` : '',
+            category: 'weight',
+            entry: entry,
+          });
+        });
+
+        (todayData.symptoms || []).forEach(entry => {
+          items.push({
+            id: 'symp-' + entry.id,
+            time: entry.time && entry.time !== 'No time set' ? entry.time : null,
+            icon: '🤒',
+            label: `${entry.symptom} — Level ${entry.level}/5`,
+            detail: entry.notes || '',
+            category: 'symptoms',
+            entry: entry,
+          });
+        });
+
+        (todayData.food || []).forEach(entry => {
+          items.push({
+            id: 'food-' + entry.id,
+            time: entry.time && entry.time !== 'No time set' ? entry.time : null,
+            icon: '🍎',
+            label: entry.note,
+            detail: entry.notes || '',
+            category: 'food',
+            entry: entry,
+          });
+        });
+
+        (todayData.gym || []).forEach(entry => {
+          items.push({
+            id: 'gym-' + entry.id,
+            time: entry.time && entry.time !== 'No time set' ? entry.time : null,
+            icon: '🏋️‍♀️',
+            label: entry.activity,
+            detail: entry.notes || '',
+            category: 'gym',
+            entry: entry,
+          });
+        });
+
+        (todayData.fasting || []).forEach(entry => {
+          let crossesMidnight = false;
+          let durationLabel = '';
+          if (entry.start && entry.end) {
+            const [sh, sm] = entry.start.split(':').map(Number);
+            const [eh, em] = entry.end.split(':').map(Number);
+            const sMin = sh * 60 + sm;
+            const eMin = eh * 60 + em;
+            crossesMidnight = sMin > eMin;
+            const diffH = (eMin - sMin + 1440) % 1440 / 60;
+            durationLabel = ` · ${diffH.toFixed(1)}h total`;
+          }
+
+          if (crossesMidnight) {
+            // Started the previous day — only "Fast ended" belongs on this day's timeline.
+            // The start info is folded into this entry's detail, and also shown as a
+            // read-only preview on the previous day (see the "peek at tomorrow" block below).
+            items.push({
+              id: 'fast-end-' + entry.id,
+              time: entry.end || null,
+              icon: '⏳',
+              label: '✅ Fast ended',
+              detail: entry.start ? `Started ${formatTime12h(entry.start)}${durationLabel}` : '',
+              category: 'fasting',
+              entry: entry,
+            });
+          } else {
+            // Same-day fast — both started and ended genuinely happened today, so show both, editable.
+            // No green highlight here — that's reserved for a fast that's currently active.
+            const target = entry.start ? getFastTargetEnd(entry.start) : null;
+            items.push({
+              id: 'fast-start-' + entry.id,
+              time: entry.start || null,
+              icon: '⏳',
+              label: '✅ Fast started',
+              detail: target ? `until ${formatTime12h(target.time)}${target.nextDay ? ' tomorrow' : ''}` : '',
+              category: 'fasting',
+              entry: entry,
+            });
+            items.push({
+              id: 'fast-end-' + entry.id,
+              time: entry.end || null,
+              icon: '⏳',
+              label: '✅ Fast ended',
+              detail: durationLabel ? durationLabel.replace(' · ', '') : '',
+              category: 'fasting',
+              entry: entry,
+            });
+          }
+        });
+
+        // Peek at tomorrow's stored fasting entries: if one crosses midnight, it actually
+        // started on the day being viewed right now — show a read-only preview here.
+        // (The entry itself lives under tomorrow's date, so it isn't editable from here;
+        // edit it from tomorrow's "Fast ended" row instead.)
+        {
+          const nextDate = parseLocalDate(dateKey);
+          nextDate.setDate(nextDate.getDate() + 1);
+          const nextDateKey = formatDateLocal(nextDate);
+          const nextDayFasting = (entries[nextDateKey] && entries[nextDateKey].fasting) || [];
+          nextDayFasting.forEach(entry => {
+            if (!entry.start || !entry.end) return;
+            const [sh, sm] = entry.start.split(':').map(Number);
+            const [eh, em] = entry.end.split(':').map(Number);
+            const crossesMidnight = (sh * 60 + sm) > (eh * 60 + em);
+            if (!crossesMidnight) return;
+            const target = getFastTargetEnd(entry.start);
+            items.push({
+              id: 'fast-start-preview-' + entry.id,
+              time: entry.start,
+              icon: '⏳',
+              label: '✅ Fast started',
+              detail: target ? `until ${formatTime12h(target.time)}${target.nextDay ? ' tomorrow' : ''}` : '',
+              category: null,
+              entry: null,
+            });
+          });
+        }
+
+        // Show "Fast started" for a fast that's currently in progress (not yet stopped) —
+        // always shown on the day it actually began.
+        if (activeFast && activeFast.startDateKey === dateKey) {
+          const target = activeFast.startTime ? getFastTargetEnd(activeFast.startTime) : null;
+          items.push({
+            id: 'fast-active-start',
+            time: activeFast.startTime || null,
+            icon: '⏳',
+            label: '✅ Fast started',
+            detail: target ? `until ${formatTime12h(target.time)}${target.nextDay ? ' tomorrow' : ''}` : '',
+            category: null,
+            entry: null,
+            milestone: true,
+          });
+        }
+
+        // Sort by time (entries without a time go to the end)
+        items.sort((a, b) => {
+          if (!a.time && !b.time) return 0;
+          if (!a.time) return 1;
+          if (!b.time) return -1;
+          return a.time.localeCompare(b.time);
+        });
+
+        return items;
+      };
+
+      const dayTimeline = getDayTimeline();
+
+      const styles = {
+        container: {
+          maxWidth: '600px',
+          margin: '0 auto',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          backgroundColor: '#ffffff',
+          minHeight: '100vh',
+          padding: '2rem 1.5rem',
+        },
+        header: {
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginBottom: '2.5rem',
+          borderBottom: '2px solid #e0e0e0',
+          paddingBottom: '2rem',
+        },
+        title: {
+          fontSize: '30px',
+          fontWeight: '700',
+          margin: 0,
+          letterSpacing: '-0.5px',
+          textAlign: 'center',
+        },
+        subtitle: {
+          fontSize: '15px',
+          fontWeight: '500',
+          color: '#666',
+          margin: 0,
+          marginTop: '0.5rem',
+          textAlign: 'center',
+        },
+        tabs: {
+          display: 'flex',
+          gap: '0.5rem',
+          marginBottom: '2.5rem',
+          borderBottom: '2px solid #e0e0e0',
+          overflowX: 'auto',
+          paddingBottom: '1rem',
+        },
+        tab: {
+          padding: '0.75rem',
+          border: '2px solid #e0e0e0',
+          backgroundColor: '#fff',
+          cursor: 'pointer',
+          fontSize: '26px',
+          color: '#666',
+          borderRadius: '8px',
+          minWidth: '52px',
+          minHeight: '52px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          lineHeight: 1,
+        },
+        tabActive: {
+          backgroundColor: '#333',
+          border: '2px solid #333',
+        },
+        content: {
+          marginBottom: '2rem',
+        },
+        card: {
+          backgroundColor: '#f9f9f9',
+          border: '2px solid #e0e0e0',
+          borderRadius: '12px',
+          padding: '2rem',
+          marginBottom: '2rem',
+        },
+        cardTitle: {
+          fontSize: '24px',
+          fontWeight: '700',
+          color: '#333',
+          marginBottom: '1.5rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          letterSpacing: '-0.3px',
+        },
+        cardLabel: {
+          fontSize: '18px',
+          color: '#666',
+          marginTop: '1.25rem',
+          marginBottom: '0.6rem',
+          fontWeight: '600',
+        },
+        formGroup: {
+          marginBottom: '2rem',
+        },
+        label: {
+          display: 'block',
+          fontSize: '18px',
+          fontWeight: '700',
+          marginBottom: '0.8rem',
+          color: '#333',
+          letterSpacing: '-0.2px',
+        },
+        input: {
+          width: '100%',
+          padding: '1.25rem',
+          fontSize: '20px',
+          border: '2px solid #d0d0d0',
+          borderRadius: '8px',
+          boxSizing: 'border-box',
+          minHeight: '56px',
+        },
+        select: {
+          width: '100%',
+          padding: '1.25rem',
+          fontSize: '20px',
+          border: '2px solid #d0d0d0',
+          borderRadius: '8px',
+          boxSizing: 'border-box',
+          minHeight: '56px',
+        },
+        textarea: {
+          width: '100%',
+          padding: '1.25rem',
+          fontSize: '20px',
+          border: '2px solid #d0d0d0',
+          borderRadius: '8px',
+          minHeight: '120px',
+          boxSizing: 'border-box',
+          fontFamily: 'inherit',
+          resize: 'vertical',
+        },
+        button: {
+          padding: '1.25rem 2rem',
+          backgroundColor: '#333',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontSize: '20px',
+          fontWeight: '700',
+          minHeight: '56px',
+          width: '100%',
+          letterSpacing: '-0.3px',
+        },
+        deleteButton: {
+          padding: '0.6rem 0.9rem',
+          backgroundColor: '#e74c3c',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          fontSize: '15px',
+          fontWeight: '600',
+        },
+        editButton: {
+          padding: '0.6rem 0.9rem',
+          backgroundColor: '#f0f0f0',
+          color: '#333',
+          border: '2px solid #d0d0d0',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          fontSize: '15px',
+          fontWeight: '600',
+        },
+        saveButton: {
+          padding: '0.6rem 0.9rem',
+          backgroundColor: '#27ae60',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          fontSize: '15px',
+          fontWeight: '600',
+        },
+        cancelButton: {
+          padding: '0.6rem 0.9rem',
+          backgroundColor: '#f0f0f0',
+          color: '#666',
+          border: '2px solid #d0d0d0',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          fontSize: '15px',
+          fontWeight: '600',
+        },
+        editInput: {
+          width: '100%',
+          padding: '0.6rem',
+          fontSize: '16px',
+          border: '2px solid #d0d0d0',
+          borderRadius: '6px',
+          boxSizing: 'border-box',
+          marginBottom: '0.5rem',
+        },
+        entry: {
+          backgroundColor: '#fff',
+          border: '2px solid #e0e0e0',
+          borderRadius: '10px',
+          padding: '1.5rem',
+          marginBottom: '1.25rem',
+          fontSize: '18px',
+          color: '#333',
+          lineHeight: '1.8',
+          fontWeight: '500',
+        },
+        entryMeta: {
+          fontSize: '16px',
+          color: '#999',
+          marginTop: '0.75rem',
+          fontWeight: '400',
+        },
+        emptyState: {
+          textAlign: 'center',
+          color: '#999',
+          fontSize: '18px',
+          padding: '2.5rem 1.5rem',
+        },
+        twoColumnForm: {
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '1.5rem',
+        },
+      };
+
+      const renderAddEntryCard = () => {
+        const isViewingToday = currentDate === formatDateLocal(new Date());
+        return (
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>➕ Add Entry</div>
+                {!addEntryType ? (
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    {[
+                      { type: 'symptoms', icon: '🤒', label: 'Symptom' },
+                      { type: 'food', icon: '🍎', label: 'Food' },
+                      { type: 'supplements', icon: '💊', label: 'Supplement' },
+                      { type: 'gym', icon: '🏋️‍♀️', label: 'Gym' },
+                      { type: 'medical', icon: '⛑️', label: 'Medical' },
+                    ].map(opt => (
+                      <div
+                        key={opt.type}
+                        role="button"
+                        onClick={() => setAddEntryType(opt.type)}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          padding: '1rem 0.5rem',
+                          border: '2px solid #e0e0e0',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          minWidth: '80px',
+                          flex: '1 1 80px',
+                        }}
+                      >
+                        <div style={{ fontSize: '28px' }}>{opt.icon}</div>
+                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>{opt.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div>
+                    {addEntryType === 'symptoms' && (
+                      <>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Symptom</label>
+                          <input
+                            type="text"
+                            placeholder="e.g., Headache"
+                            value={formData.symptom}
+                            onChange={e => setFormData({ ...formData, symptom: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Severity (1-5)</label>
+                          <input
+                            type="range"
+                            min="1"
+                            max="5"
+                            value={formData.symptomLevel}
+                            onChange={e => setFormData({ ...formData, symptomLevel: parseInt(e.target.value) })}
+                            style={{ width: '100%' }}
+                          />
+                          <div style={{ textAlign: 'center', fontSize: '13px', color: '#666', marginTop: '0.3rem' }}>
+                            Level: {formData.symptomLevel} / 5
+                          </div>
+                        </div>
+                        {!isViewingToday && (
+                          <div style={styles.formGroup}>
+                            <label style={styles.label}>Time</label>
+                            <input
+                              type="time"
+                              value={formData.symptomTime}
+                              onChange={e => setFormData({ ...formData, symptomTime: e.target.value })}
+                              style={styles.input}
+                            />
+                          </div>
+                        )}
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Notes (optional)</label>
+                          <textarea
+                            placeholder="e.g., Started after lunch"
+                            value={formData.symptomNotes}
+                            onChange={e => setFormData({ ...formData, symptomNotes: e.target.value })}
+                            style={styles.textarea}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              if (formData.symptom) {
+                                addEntry('symptoms', {
+                                  symptom: formData.symptom,
+                                  level: formData.symptomLevel,
+                                  notes: formData.symptomNotes,
+                                  date: currentDate,
+                                  time: formData.symptomTime || getCurrentTimeHHMM(),
+                                });
+                                setAddEntryType(null);
+                              }
+                            }}
+                            style={styles.button}
+                          >
+                            Log Symptom
+                          </button>
+                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
+                        </div>
+                      </>
+                    )}
+                    {addEntryType === 'food' && (
+                      <>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>What did you eat?</label>
+                          <textarea
+                            placeholder="e.g., Grilled chicken, rice, and broccoli"
+                            value={formData.foodNote}
+                            onChange={e => setFormData({ ...formData, foodNote: e.target.value })}
+                            style={styles.textarea}
+                          />
+                        </div>
+                        {!isViewingToday && (
+                          <div style={styles.formGroup}>
+                            <label style={styles.label}>Time</label>
+                            <input
+                              type="time"
+                              value={formData.foodTime}
+                              onChange={e => setFormData({ ...formData, foodTime: e.target.value })}
+                              style={styles.input}
+                            />
+                          </div>
+                        )}
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Notes (optional)</label>
+                          <textarea
+                            placeholder="e.g., Felt bloated after"
+                            value={formData.foodNotes}
+                            onChange={e => setFormData({ ...formData, foodNotes: e.target.value })}
+                            style={styles.textarea}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              if (formData.foodNote) {
+                                addEntry('food', {
+                                  note: formData.foodNote,
+                                  time: formData.foodTime || getCurrentTimeHHMM(),
+                                  notes: formData.foodNotes,
+                                });
+                                setAddEntryType(null);
+                              }
+                            }}
+                            style={styles.button}
+                          >
+                            Log Food
+                          </button>
+                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
+                        </div>
+                      </>
+                    )}
+                    {addEntryType === 'supplements' && (
+                      <>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Supplement name</label>
+                          <input
+                            type="text"
+                            placeholder="e.g., Magnesium"
+                            value={formData.supplement}
+                            onChange={e => setFormData({ ...formData, supplement: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        {!isViewingToday && (
+                          <div style={styles.formGroup}>
+                            <label style={styles.label}>Time</label>
+                            <input
+                              type="time"
+                              value={formData.supplementTime}
+                              onChange={e => setFormData({ ...formData, supplementTime: e.target.value })}
+                              style={styles.input}
+                            />
+                          </div>
+                        )}
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Notes (optional)</label>
+                          <textarea
+                            placeholder="e.g., Taken with food"
+                            value={formData.supplementNotes}
+                            onChange={e => setFormData({ ...formData, supplementNotes: e.target.value })}
+                            style={styles.textarea}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              if (formData.supplement) {
+                                addEntry('supplements', {
+                                  name: formData.supplement,
+                                  time: formData.supplementTime || getCurrentTimeHHMM(),
+                                  notes: formData.supplementNotes,
+                                });
+                                setAddEntryType(null);
+                              }
+                            }}
+                            style={styles.button}
+                          >
+                            Log Supplement
+                          </button>
+                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
+                        </div>
+                      </>
+                    )}
+                    {addEntryType === 'gym' && (
+                      <>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Gym activity</label>
+                          <input
+                            type="text"
+                            placeholder="e.g., Planet Fitness — Chest & Triceps"
+                            value={formData.gymActivity}
+                            onChange={e => setFormData({ ...formData, gymActivity: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        {!isViewingToday && (
+                          <div style={styles.formGroup}>
+                            <label style={styles.label}>Time</label>
+                            <input
+                              type="time"
+                              value={formData.gymTime}
+                              onChange={e => setFormData({ ...formData, gymTime: e.target.value })}
+                              style={styles.input}
+                            />
+                          </div>
+                        )}
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Notes (optional)</label>
+                          <textarea
+                            placeholder="e.g., 60 min, felt strong"
+                            value={formData.gymNotes}
+                            onChange={e => setFormData({ ...formData, gymNotes: e.target.value })}
+                            style={styles.textarea}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              if (formData.gymActivity) {
+                                addEntry('gym', {
+                                  activity: formData.gymActivity,
+                                  notes: formData.gymNotes,
+                                  time: formData.gymTime || getCurrentTimeHHMM(),
+                                });
+                                setAddEntryType(null);
+                              }
+                            }}
+                            style={styles.button}
+                          >
+                            Log Gym Activity
+                          </button>
+                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
+                        </div>
+                      </>
+                    )}
+                    {addEntryType === 'medical' && (
+                      <>
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Medical event</label>
+                          <input
+                            type="text"
+                            placeholder="e.g., Doctor visit, blood test, vaccination"
+                            value={formData.medicalEvent}
+                            onChange={e => setFormData({ ...formData, medicalEvent: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        {!isViewingToday && (
+                          <div style={styles.formGroup}>
+                            <label style={styles.label}>Time</label>
+                            <input
+                              type="time"
+                              value={formData.medicalTime}
+                              onChange={e => setFormData({ ...formData, medicalTime: e.target.value })}
+                              style={styles.input}
+                            />
+                          </div>
+                        )}
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>Notes (optional)</label>
+                          <textarea
+                            placeholder="e.g., Results showed..."
+                            value={formData.medicalNotes}
+                            onChange={e => setFormData({ ...formData, medicalNotes: e.target.value })}
+                            style={styles.textarea}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              if (formData.medicalEvent) {
+                                addEntry('medical', {
+                                  event: formData.medicalEvent,
+                                  notes: formData.medicalNotes,
+                                  time: formData.medicalTime || getCurrentTimeHHMM(),
+                                });
+                                setAddEntryType(null);
+                              }
+                            }}
+                            style={styles.button}
+                          >
+                            Log Medical Event
+                          </button>
+                          <button onClick={() => setAddEntryType(null)} style={styles.cancelButton}>Cancel</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+      );
+      };
+
+      return (
+        <div style={styles.container}>
+          <div style={styles.header}>
+            <div
+              onClick={() => setActiveTab('dashboard')}
+              style={{ cursor: 'pointer' }}
+            >
+              <h1 style={styles.title}>💪 I AM SPARTACUS 💪</h1>
+              <p style={styles.subtitle}>My Daily Tracker for Health and Activity</p>
+            </div>
+          </div>
+
+          {/* Date Navigation */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+            <div
+              role="button"
+              onClick={() => {
+                const d = parseLocalDate(currentDate);
+                d.setDate(d.getDate() - 1);
+                setCurrentDate(formatDateLocal(d));
+              }}
+              style={{
+                fontSize: '20px',
+                fontWeight: '700',
+                color: '#666',
+                cursor: 'pointer',
+                padding: '0.4rem 0.6rem',
+                userSelect: 'none',
+              }}
+              aria-label="Previous day"
+            >
+              ‹
+            </div>
+            <input
+              type="date"
+              value={currentDate}
+              onChange={e => setCurrentDate(e.target.value)}
+              style={{
+                padding: '0.6rem 1rem',
+                fontSize: '16px',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                textAlign: 'center',
+                fontWeight: '600',
+                color: '#333',
+              }}
+            />
+            <div
+              role="button"
+              onClick={() => {
+                const d = parseLocalDate(currentDate);
+                d.setDate(d.getDate() + 1);
+                setCurrentDate(formatDateLocal(d));
+              }}
+              style={{
+                fontSize: '20px',
+                fontWeight: '700',
+                color: '#666',
+                cursor: 'pointer',
+                padding: '0.4rem 0.6rem',
+                userSelect: 'none',
+              }}
+              aria-label="Next day"
+            >
+              ›
+            </div>
+            {currentDate !== formatDateLocal(new Date()) && (
+              <div
+                role="button"
+                onClick={() => setCurrentDate(formatDateLocal(new Date()))}
+                style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#333',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  padding: '0.4rem 0.2rem',
+                }}
+              >
+                Today
+              </div>
+            )}
+          </div>
+
+          {/* Tabs */}
+          <div style={styles.tabs}>
+            {[
+              { key: 'dashboard', icon: '📊', name: 'Dashboard' },
+              { key: 'timeline', icon: '🧾', name: 'Day Timeline' },
+              { key: 'history', icon: '📈', name: 'Stats and History' },
+              { key: 'plan', icon: '🎯', name: 'Plan for Today' },
+              { key: 'settings', icon: '🛠️', name: 'Settings' },
+            ].map(tab => (
+              <div
+                key={tab.key}
+                role="button"
+                onClick={() => setActiveTab(tab.key)}
+                style={{
+                  ...styles.tab,
+                  ...(activeTab === tab.key ? styles.tabActive : {}),
+                  WebkitTapHighlightColor: 'transparent',
+                  userSelect: 'none',
+                }}
+                title={tab.name}
+                aria-label={tab.name}
+              >
+                {tab.icon}
+              </div>
+            ))}
+          </div>
+
+          {/* Dashboard Tab */}
+          {activeTab === 'dashboard' && (
+            <div style={styles.content}>
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>⏳ Fasting</div>
+                <div style={{ fontSize: '16px', color: '#666', lineHeight: '2', fontWeight: '500' }}>
+                  {activeFast ? (
+                    editingActiveFastStart ? (
+                      <div style={{ padding: '1rem 1.25rem', backgroundColor: '#fff', border: '2px solid #333', borderRadius: '8px' }}>
+                        <label style={{ fontSize: '13px', color: '#666' }}>Actual fast start time</label>
+                        <input
+                          type="time"
+                          value={editActiveFastTime}
+                          onChange={e => setEditActiveFastTime(e.target.value)}
+                          style={styles.editInput}
+                        />
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              saveActiveFastStartTime(editActiveFastTime);
+                              setEditingActiveFastStart(false);
+                            }}
+                            style={styles.saveButton}
+                          >
+                            Save
+                          </button>
+                          <button onClick={() => setEditingActiveFastStart(false)} style={styles.cancelButton}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      (() => {
+                        const goalHours = appSettings.fastingGoalHours || 16;
+                        const elapsedMs = Date.now() - activeFast.startTimestampMs;
+                        const elapsedHoursDecimal = elapsedMs / 3600000;
+                        const percent = Math.round((elapsedHoursDecimal / goalHours) * 100);
+                        const percentColor = percent >= 100 ? '#27ae60' : '#3498db';
+
+                        const target = getFastTargetEnd(activeFast.startTime);
+                        const targetTimestampMs = activeFast.startTimestampMs + goalHours * 3600000;
+                        const remainingMs = targetTimestampMs - Date.now();
+                        const remainingMin = Math.round(remainingMs / 60000);
+                        const isPastGoal = remainingMin < 0;
+                        const absRemainMin = Math.abs(remainingMin);
+                        const remHoursPart = Math.floor(absRemainMin / 60);
+                        const remMinutesPart = absRemainMin % 60;
+
+                        return (
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
+                              <span style={{ fontSize: '19px', fontWeight: '700', color: '#3498db' }}>
+                                ⏳ You're Fasting!
+                              </span>
+                              <button
+                                onClick={stopFast}
+                                style={{
+                                  backgroundColor: percentColor,
+                                  color: '#fff',
+                                  border: 'none',
+                                  borderRadius: '8px',
+                                  padding: '0.75rem 1.5rem',
+                                  fontSize: '16px',
+                                  fontWeight: '700',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Stop Fast
+                              </button>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                              <div>
+                                <div style={{ fontSize: '26px', fontWeight: '700', color: '#333' }}>{getElapsedFastLabel()}</div>
+                                <div style={{ fontSize: '12px', color: '#666', marginTop: '0.2rem' }}>Elapsed</div>
+                                <div style={{ fontSize: '11px', color: '#999', marginTop: '0.1rem' }}>since {formatTime12h(activeFast.startTime)}</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '26px', fontWeight: '700', color: percentColor }}>{percent}%</div>
+                                <div style={{ fontSize: '12px', color: '#666', marginTop: '0.2rem' }}>Goal Progress</div>
+                                <div style={{ fontSize: '11px', color: '#999', marginTop: '0.1rem' }}>{elapsedHoursDecimal.toFixed(1)}h / {goalHours}h</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '26px', fontWeight: '700', color: '#333' }}>{formatTime12h(target.time)}</div>
+                                <div style={{ fontSize: '12px', color: '#666', marginTop: '0.2rem' }}>Fast Ends</div>
+                                <div style={{ fontSize: '11px', color: '#999', marginTop: '0.1rem' }}>
+                                  {target.nextDay ? 'tomorrow' : 'today'} · {isPastGoal ? `${remHoursPart}h ${remMinutesPart}m over` : `${remHoursPart}h ${remMinutesPart}m left`}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                              <span
+                                onClick={() => {
+                                  setEditActiveFastTime(activeFast.startTime);
+                                  setEditingActiveFastStart(true);
+                                }}
+                                style={{ color: '#666', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
+                              >
+                                Edit start time
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()
+                    )
+                  ) : (
+                    <div>
+                      {(() => {
+                        const next = getNextFastPrediction();
+                        const urgencyColors = { gray: '#999', green: '#27ae60', yellow: '#f39c12', red: '#e74c3c' };
+                        const urgencyColor = urgencyColors[next.urgency];
+                        return (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                            <span style={{ fontSize: '19px', fontWeight: '700', color: '#27ae60' }}>
+                              🍽️ You're Eating!
+                            </span>
+                            <button
+                              onClick={startFast}
+                              style={{
+                                backgroundColor: urgencyColor,
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '8px',
+                                padding: '0.75rem 1.5rem',
+                                fontSize: '16px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Start Now
+                            </button>
+                          </div>
+                        );
+                      })()}
+
+                      {fastingStatus ? (
+                        (() => {
+                          const goalHours = appSettings.fastingGoalHours || 16;
+                          const percent = Math.round((fastingStatus.hours / goalHours) * 100);
+                          const percentColor = percent >= 100 ? '#27ae60' : '#f39c12';
+                          const next = getNextFastPrediction();
+                          const urgencyColors = { gray: '#999', green: '#27ae60', yellow: '#f39c12', red: '#e74c3c' };
+                          const nextColor = urgencyColors[next.urgency];
+                          const nextBig = next.isOverdue
+                            ? 'Overdue'
+                            : `${next.hoursPart}h ${next.minutesPart}m`;
+                          const nextSub = next.isOverdue
+                            ? `${next.hoursPart}h ${next.minutesPart}m past ${formatTime12h(next.time)}`
+                            : `at ${formatTime12h(next.time)}`;
+
+                          return (
+                            <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                              <div>
+                                <div style={{ fontSize: '26px', fontWeight: '700', color: '#333' }}>{fastingStatus.hours}h</div>
+                                <div style={{ fontSize: '12px', color: '#666', marginTop: '0.2rem' }}>Last Fast</div>
+                                <div style={{ fontSize: '11px', color: '#999', marginTop: '0.1rem' }}>
+                                  {formatTime12h(fastingStatus.start)} – {formatTime12h(fastingStatus.end)}
+                                </div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '26px', fontWeight: '700', color: percentColor }}>{percent}%</div>
+                                <div style={{ fontSize: '12px', color: '#666', marginTop: '0.2rem' }}>Goal Progress</div>
+                                <div style={{ fontSize: '11px', color: '#999', marginTop: '0.1rem' }}>
+                                  {fastingStatus.hours}h / {goalHours}h
+                                </div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '26px', fontWeight: '700', color: nextColor }}>{nextBig}</div>
+                                <div style={{ fontSize: '12px', color: '#666', marginTop: '0.2rem' }}>Next Fast</div>
+                                <div style={{ fontSize: '11px', color: '#999', marginTop: '0.1rem' }}>{nextSub}</div>
+                              </div>
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        (() => {
+                          const next = getNextFastPrediction();
+                          const urgencyColors = { gray: '#999', green: '#27ae60', yellow: '#f39c12', red: '#e74c3c' };
+                          const nextColor = urgencyColors[next.urgency];
+                          const nextBig = next.isOverdue
+                            ? 'Overdue'
+                            : `${next.hoursPart}h ${next.minutesPart}m`;
+                          const nextSub = next.isOverdue
+                            ? `${next.hoursPart}h ${next.minutesPart}m past ${formatTime12h(next.time)}`
+                            : `at ${formatTime12h(next.time)}`;
+                          return (
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ fontSize: '13px', color: '#999', marginBottom: '0.5rem' }}>No fast logged today yet</div>
+                              <div style={{ fontSize: '28px', fontWeight: '700', color: nextColor }}>{nextBig}</div>
+                              <div style={{ fontSize: '12px', color: '#666', marginTop: '0.2rem' }}>Next Fast</div>
+                              <div style={{ fontSize: '11px', color: '#999', marginTop: '0.1rem' }}>{nextSub}</div>
+                            </div>
+                          );
+                        })()
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>⚖️ Weight</div>
+                {(() => {
+                  const target = appSettings.targetWeight ? parseFloat(appSettings.targetWeight) : null;
+                  const hasToday = todayData.weight && todayData.weight.length > 0;
+
+                  if (hasToday) {
+                    const latest = todayData.weight[todayData.weight.length - 1];
+                    const current = parseFloat(latest.weight);
+                    const diff = target !== null ? current - target : null;
+                    const deltaColor = diff === null ? '#666' : diff >= 2 ? '#e74c3c' : diff > 0 ? '#f39c12' : '#27ae60';
+                    const deltaLabel = diff === null ? '—' : diff > 0 ? `+${diff.toFixed(1)}` : diff < 0 ? `${diff.toFixed(1)}` : '0';
+
+                    return (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+                          <div>
+                            <div style={{ fontSize: '26px', fontWeight: '700', color: '#333' }}>{latest.weight} kg</div>
+                            <div style={{ fontSize: '12px', color: '#666', marginTop: '0.2rem' }}>Today's Weight</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '26px', fontWeight: '700', color: '#333' }}>{target !== null ? `${target} kg` : '—'}</div>
+                            <div style={{ fontSize: '12px', color: '#666', marginTop: '0.2rem' }}>Target</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '26px', fontWeight: '700', color: deltaColor }}>{deltaLabel}</div>
+                            <div style={{ fontSize: '12px', color: '#666', marginTop: '0.2rem' }}>Delta (kg)</div>
+                          </div>
+                        </div>
+
+                        {!showWeightEntryForm ? (
+                          <div
+                            onClick={() => setShowWeightEntryForm(true)}
+                            style={{ textAlign: 'center', color: '#666', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
+                          >
+                            + Log another entry
+                          </div>
+                        ) : (
+                          <div>
+                            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                              <div style={{ flex: 1, minWidth: '140px' }}>
+                                <label style={styles.label}>Weight (kg)</label>
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  placeholder="e.g., 75.5"
+                                  value={formData.weight}
+                                  onChange={e => setFormData({ ...formData, weight: e.target.value })}
+                                  style={styles.input}
+                                />
+                              </div>
+                              <button
+                                onClick={() => {
+                                  if (formData.weight) {
+                                    addEntry('weight', { weight: formData.weight, target: appSettings.targetWeight, time: getCurrentTimeHHMM() });
+                                    setShowWeightEntryForm(false);
+                                  }
+                                }}
+                                style={{ ...styles.button, width: 'auto', padding: '0.9rem 1.5rem' }}
+                              >
+                                Log
+                              </button>
+                            </div>
+                            <div
+                              onClick={() => setShowWeightEntryForm(false)}
+                              style={{ textAlign: 'center', color: '#666', fontWeight: '600', fontSize: '13px', cursor: 'pointer', marginTop: '0.5rem' }}
+                            >
+                              Cancel
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  }
+
+                  const recent = getMostRecentWeight();
+                  return (
+                    <>
+                      {recent && (
+                        <div style={{ fontSize: '14px', color: '#666', marginBottom: '1rem' }}>
+                          Last recorded: {recent.entry.weight} kg on {parseLocalDate(recent.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          {target !== null && ` · Target: ${target} kg`}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: '140px' }}>
+                          <label style={styles.label}>Weight (kg)</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            placeholder="e.g., 75.5"
+                            value={formData.weight}
+                            onChange={e => setFormData({ ...formData, weight: e.target.value })}
+                            style={styles.input}
+                          />
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (formData.weight) {
+                              addEntry('weight', { weight: formData.weight, target: appSettings.targetWeight, time: getCurrentTimeHHMM() });
+                            }
+                          }}
+                          style={{ ...styles.button, width: 'auto', padding: '0.9rem 1.5rem' }}
+                        >
+                          Log
+                        </button>
+                      </div>
+                      {target !== null && !recent && (
+                        <div style={{ fontSize: '13px', color: '#666', marginTop: '0.75rem' }}>
+                          Target: {target} kg
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+
+              {(() => {
+                const now = new Date();
+                const nowTotalMin = now.getHours() * 60 + now.getMinutes();
+
+                const allPendingItems = [
+                  ...Object.values(recurringSupps).filter(isSuppScheduledToday).map(s => ({ item: s, type: 'supplement' })),
+                  ...Object.values(recurringGym).filter(isSuppScheduledToday).map(g => ({ item: g, type: 'gym' })),
+                ].filter(({ item, type }) => {
+                  const isSupp = type === 'supplement';
+                  const done = isSupp ? isRecurringDone(item) : isRecurringGymDone(item);
+                  const failedKey = isSupp ? `recurring-${item.id}` : `recurring-gym-${item.id}`;
+                  const failed = isRecurringFailed(failedKey);
+                  if (done || failed) return false;
+                  if (!item.time) return false;
+                  return true;
+                }).sort((a, b) => (a.item.time || '').localeCompare(b.item.time || ''));
+
+                if (allPendingItems.length === 0) return null;
+
+                // Only show the nearest-scheduled item(s) — once marked done/failed, the next one surfaces automatically
+                const nearestTime = allPendingItems[0].item.time;
+                const upcomingItems = allPendingItems.filter(({ item }) => item.time === nearestTime);
+
+                return (
+                  <div style={styles.card}>
+                    <div style={styles.cardTitle}>🔔 Upcoming</div>
+                    {upcomingItems.map(({ item, type }) => {
+                      const isSupp = type === 'supplement';
+                      const typeIcon = isSupp ? '💊' : '🏋️‍♀️';
+                      const failedKey = isSupp ? `recurring-${item.id}` : `recurring-gym-${item.id}`;
+                      const confirmingId = isSupp ? confirmingSuppId : confirmingGymId;
+                      const setConfirmingId = isSupp ? setConfirmingSuppId : setConfirmingGymId;
+                      const confirmTimeVal = isSupp ? confirmTime : confirmGymTime;
+                      const setConfirmTimeVal = isSupp ? setConfirmTime : setConfirmGymTime;
+                      const onConfirmDone = isSupp ? confirmRecurringDone : confirmRecurringGymDone;
+                      const isConfirming = confirmingId === item.id;
+
+                      const [h, m] = item.time.split(':').map(Number);
+                      const scheduledMin = h * 60 + m;
+                      const diffMin = scheduledMin - nowTotalMin;
+
+                      let urgencyColor, urgencyBg;
+                      if (diffMin > 60) {
+                        urgencyColor = '#999';
+                        urgencyBg = '#f5f5f5';
+                      } else if (diffMin > 0) {
+                        urgencyColor = '#27ae60';
+                        urgencyBg = '#eafaf1';
+                      } else if (diffMin > -60) {
+                        urgencyColor = '#856404';
+                        urgencyBg = '#fff3cd';
+                      } else {
+                        urgencyColor = '#c0392b';
+                        urgencyBg = '#fdecea';
+                      }
+
+                      if (isConfirming) {
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              padding: '1rem 1.25rem',
+                              backgroundColor: '#fff',
+                              border: '2px solid #333',
+                              borderRadius: '8px',
+                              marginBottom: '0.75rem',
+                            }}
+                          >
+                            <div style={{ fontWeight: '600', fontSize: '17px', marginBottom: '0.75rem' }}>
+                              {typeIcon} {item.name}
+                            </div>
+                            <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
+                            <input
+                              type="time"
+                              value={confirmTimeVal}
+                              onChange={e => setConfirmTimeVal(e.target.value)}
+                              style={styles.editInput}
+                            />
+                            <label style={{ fontSize: '13px', color: '#666' }}>Notes (optional)</label>
+                            <textarea
+                              placeholder="e.g., dosage, duration..."
+                              value={confirmNotes}
+                              onChange={e => setConfirmNotes(e.target.value)}
+                              style={{ ...styles.editInput, minHeight: '60px' }}
+                            />
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                              <button
+                                onClick={() => {
+                                  onConfirmDone(item, confirmTimeVal, confirmNotes);
+                                  setConfirmingId(null);
+                                  setConfirmNotes('');
+                                }}
+                                style={styles.saveButton}
+                              >
+                                Confirm
+                              </button>
+                              <button onClick={() => { setConfirmingId(null); setConfirmNotes(''); }} style={styles.cancelButton}>Cancel</button>
+                              <span
+                                onClick={() => {
+                                  markRecurringFailed(failedKey);
+                                  setConfirmingId(null);
+                                  setConfirmNotes('');
+                                }}
+                                style={{ color: '#e74c3c', fontWeight: '700', fontSize: '15px', cursor: 'pointer', marginLeft: 'auto' }}
+                              >
+                                Mark as Failed
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            setConfirmingId(item.id);
+                            setConfirmTimeVal(getCurrentTimeHHMM());
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '1rem 1.25rem',
+                            backgroundColor: urgencyBg,
+                            border: `2px solid ${urgencyColor}`,
+                            borderRadius: '8px',
+                            marginBottom: '0.75rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <div style={{ fontSize: '18px' }}>{typeIcon}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: '600', fontSize: '17px', color: '#333' }}>{item.name}</div>
+                          </div>
+                          <div style={{ fontSize: '14px', color: urgencyColor, fontWeight: '600' }}>
+                            {diffMin <= -60
+                              ? `Overdue · ${formatTime12h(item.time)}`
+                              : diffMin <= 0
+                              ? `Due now · ${formatTime12h(item.time)}`
+                              : formatTime12h(item.time)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {renderAddEntryCard()}
+            </div>
+          )}
+
+          {/* Plan for Today Tab */}
+          {activeTab === 'plan' && (
+            <div style={styles.content}>
+              {(() => {
+                const planItems = [
+                  ...Object.values(recurringSupps).filter(isSuppScheduledToday).map(s => ({ item: s, type: 'supplement' })),
+                  ...Object.values(recurringGym).filter(isSuppScheduledToday).map(g => ({ item: g, type: 'gym' })),
+                ].sort((a, b) => (a.item.time || '').localeCompare(b.item.time || ''));
+
+                if (planItems.length === 0) return null;
+
+                return (
+                  <div style={styles.card}>
+                    <div style={styles.cardTitle}>🎯 Plan for Today</div>
+                    <div>
+                      {planItems.map(({ item, type }) => {
+                        const isSupp = type === 'supplement';
+                        const typeIcon = isSupp ? '💊' : '🏋️‍♀️';
+                        const done = isSupp ? isRecurringDone(item) : isRecurringGymDone(item);
+                        const failedKey = isSupp ? `recurring-${item.id}` : `recurring-gym-${item.id}`;
+                        const failed = isRecurringFailed(failedKey);
+                        const confirmingId = isSupp ? confirmingSuppId : confirmingGymId;
+                        const setConfirmingId = isSupp ? setConfirmingSuppId : setConfirmingGymId;
+                        const confirmTimeVal = isSupp ? confirmTime : confirmGymTime;
+                        const setConfirmTimeVal = isSupp ? setConfirmTime : setConfirmGymTime;
+                        const confirmingUncheckId = isSupp ? confirmingUncheckSuppId : confirmingUncheckGymId;
+                        const setConfirmingUncheckId = isSupp ? setConfirmingUncheckSuppId : setConfirmingUncheckGymId;
+                        const onConfirmDone = isSupp ? confirmRecurringDone : confirmRecurringGymDone;
+                        const onUncheck = isSupp ? uncheckRecurring : uncheckRecurringGym;
+                        const isConfirming = confirmingId === item.id;
+
+                        if (isConfirming) {
+                          return (
+                            <div
+                              key={item.id}
+                              style={{
+                                padding: '1rem 1.25rem',
+                                backgroundColor: '#fff',
+                                border: '2px solid #333',
+                                borderRadius: '8px',
+                                marginBottom: '0.75rem',
+                              }}
+                            >
+                              <div style={{ fontWeight: '600', fontSize: '17px', marginBottom: '0.75rem' }}>
+                                {typeIcon} {item.name}
+                              </div>
+                              <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
+                              <input
+                                type="time"
+                                value={confirmTimeVal}
+                                onChange={e => setConfirmTimeVal(e.target.value)}
+                                style={styles.editInput}
+                              />
+                              <label style={{ fontSize: '13px', color: '#666' }}>Notes (optional)</label>
+                              <textarea
+                                placeholder="e.g., dosage, duration..."
+                                value={confirmNotes}
+                                onChange={e => setConfirmNotes(e.target.value)}
+                                style={{ ...styles.editInput, minHeight: '60px' }}
+                              />
+                              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                <button
+                                  onClick={() => {
+                                    onConfirmDone(item, confirmTimeVal, confirmNotes);
+                                    setConfirmingId(null);
+                                    setConfirmNotes('');
+                                  }}
+                                  style={styles.saveButton}
+                                >
+                                  Confirm
+                                </button>
+                                <button onClick={() => { setConfirmingId(null); setConfirmNotes(''); }} style={styles.cancelButton}>
+                                  Cancel
+                                </button>
+                                <span
+                                  onClick={() => {
+                                    markRecurringFailed(failedKey);
+                                    setConfirmingId(null);
+                                    setConfirmNotes('');
+                                  }}
+                                  style={{ color: '#e74c3c', fontWeight: '700', fontSize: '15px', cursor: 'pointer', marginLeft: 'auto' }}
+                                >
+                                  Mark as Failed
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (confirmingUncheckId === item.id) {
+                          return (
+                            <div
+                              key={item.id}
+                              style={{
+                                padding: '1rem 1.25rem',
+                                backgroundColor: '#fff',
+                                border: '2px solid #e74c3c',
+                                borderRadius: '8px',
+                                marginBottom: '0.75rem',
+                              }}
+                            >
+                              <div style={{ fontWeight: '600', fontSize: '17px', marginBottom: '0.5rem' }}>
+                                Unmark {typeIcon} {item.name}?
+                              </div>
+                              <div style={{ fontSize: '14px', color: '#666', marginBottom: '0.75rem' }}>
+                                This won't remove it from your Day Timeline log — you can delete that entry separately if needed.
+                              </div>
+                              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <button
+                                  onClick={() => {
+                                    onUncheck(item);
+                                    setConfirmingUncheckId(null);
+                                  }}
+                                  style={styles.deleteButton}
+                                >
+                                  Yes, Unmark
+                                </button>
+                                <button onClick={() => setConfirmingUncheckId(null)} style={styles.cancelButton}>
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (failed) {
+                          return (
+                            <div
+                              key={item.id}
+                              onClick={() => clearRecurringFailed(failedKey)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.75rem',
+                                padding: '1rem 1.25rem',
+                                backgroundColor: '#fdecea',
+                                border: '2px solid #e74c3c',
+                                borderRadius: '8px',
+                                marginBottom: '0.75rem',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: '28px',
+                                  height: '28px',
+                                  minWidth: '28px',
+                                  borderRadius: '50%',
+                                  border: '2px solid #e74c3c',
+                                  backgroundColor: '#e74c3c',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: '#fff',
+                                  fontSize: '16px',
+                                  fontWeight: '700',
+                                }}
+                              >
+                                ✕
+                              </div>
+                              <div style={{ fontSize: '18px' }}>{typeIcon}</div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: '600', fontSize: '17px', color: '#c0392b', textDecoration: 'line-through' }}>
+                                  {item.name}
+                                </div>
+                              </div>
+                              <div style={{ fontSize: '15px', color: '#c0392b', fontWeight: '600', flexShrink: 0 }}>
+                                Failed
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => {
+                              if (done) {
+                                setConfirmingUncheckId(item.id);
+                              } else {
+                                setConfirmingId(item.id);
+                                setConfirmTimeVal(getCurrentTimeHHMM());
+                              }
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.75rem',
+                              padding: '1rem 1.25rem',
+                              backgroundColor: done ? '#eafaf1' : '#fff',
+                              border: `2px solid ${done ? '#27ae60' : '#e0e0e0'}`,
+                              borderRadius: '8px',
+                              marginBottom: '0.75rem',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: '28px',
+                                height: '28px',
+                                minWidth: '28px',
+                                borderRadius: '50%',
+                                border: `2px solid ${done ? '#27ae60' : '#ccc'}`,
+                                backgroundColor: done ? '#27ae60' : 'transparent',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#fff',
+                                fontSize: '16px',
+                                fontWeight: '700',
+                              }}
+                            >
+                              {done ? '✓' : ''}
+                            </div>
+                            <div style={{ fontSize: '18px' }}>{typeIcon}</div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div
+                                style={{
+                                  fontWeight: '600',
+                                  fontSize: '17px',
+                                  color: done ? '#7a9e8c' : '#333',
+                                  textDecoration: done ? 'line-through' : 'none',
+                                }}
+                              >
+                                {item.name}
+                              </div>
+                            </div>
+                            <div style={{ fontSize: '15px', color: '#666', fontWeight: '600', flexShrink: 0 }}>
+                              {formatTime12h(item.time)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* Day Timeline Tab */}
+          {activeTab === 'timeline' && (
+            <div style={styles.content}>
+              {dayTimeline.length > 0 && (
+                <div id="day-timeline-card" style={styles.card}>
+                  <div style={styles.cardTitle}>🧾 Day Timeline</div>
+                  <div>
+                    {dayTimeline.map(item => {
+                      if (item.id === 'fast-active-start' && editingActiveFastStart) {
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              padding: '1rem 1.25rem',
+                              backgroundColor: '#fff',
+                              border: '2px solid #333',
+                              borderRadius: '8px',
+                              marginBottom: '0.75rem',
+                            }}
+                          >
+                            <label style={{ fontSize: '13px', color: '#666' }}>Actual fast start time</label>
+                            <input
+                              type="time"
+                              value={editActiveFastTime}
+                              onChange={e => setEditActiveFastTime(e.target.value)}
+                              style={styles.editInput}
+                            />
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                              <button
+                                onClick={() => {
+                                  saveActiveFastStartTime(editActiveFastTime);
+                                  setEditingActiveFastStart(false);
+                                }}
+                                style={styles.saveButton}
+                              >
+                                Save
+                              </button>
+                              <button onClick={() => setEditingActiveFastStart(false)} style={styles.cancelButton}>Cancel</button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      const editingThis = timelineEditingKey === item.id;
+
+                      if (editingThis) {
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              padding: '1rem 1.25rem',
+                              backgroundColor: '#fff',
+                              border: '2px solid #333',
+                              borderRadius: '8px',
+                              marginBottom: '0.75rem',
+                            }}
+                          >
+                            {item.category === 'supplements' && (
+                              <>
+                                <label style={{ fontSize: '13px', color: '#666' }}>Name</label>
+                                <input
+                                  type="text"
+                                  value={editData.name}
+                                  onChange={e => setEditData({ ...editData, name: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
+                                <input
+                                  type="time"
+                                  value={editData.time}
+                                  onChange={e => setEditData({ ...editData, time: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>Notes</label>
+                                <textarea
+                                  value={editData.notes || ''}
+                                  onChange={e => setEditData({ ...editData, notes: e.target.value })}
+                                  style={{ ...styles.editInput, minHeight: '60px' }}
+                                />
+                              </>
+                            )}
+                            {item.category === 'symptoms' && (
+                              <>
+                                <label style={{ fontSize: '13px', color: '#666' }}>Symptom</label>
+                                <input
+                                  type="text"
+                                  value={editData.symptom}
+                                  onChange={e => setEditData({ ...editData, symptom: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>Severity (1-5)</label>
+                                <input
+                                  type="range"
+                                  min="1"
+                                  max="5"
+                                  value={editData.level}
+                                  onChange={e => setEditData({ ...editData, level: parseInt(e.target.value) })}
+                                  style={{ width: '100%', marginBottom: '0.5rem' }}
+                                />
+                                <div style={{ textAlign: 'center', fontSize: '13px', color: '#666', marginBottom: '0.5rem' }}>
+                                  Level: {editData.level} / 5
+                                </div>
+                                <div style={styles.twoColumnForm}>
+                                  <div>
+                                    <label style={{ fontSize: '13px', color: '#666' }}>Date</label>
+                                    <input
+                                      type="date"
+                                      value={editData.date}
+                                      onChange={e => setEditData({ ...editData, date: e.target.value })}
+                                      style={styles.editInput}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
+                                    <input
+                                      type="time"
+                                      value={editData.time}
+                                      onChange={e => setEditData({ ...editData, time: e.target.value })}
+                                      style={styles.editInput}
+                                    />
+                                  </div>
+                                </div>
+                                <label style={{ fontSize: '13px', color: '#666' }}>Notes</label>
+                                <textarea
+                                  value={editData.notes || ''}
+                                  onChange={e => setEditData({ ...editData, notes: e.target.value })}
+                                  style={{ ...styles.editInput, minHeight: '60px' }}
+                                />
+                              </>
+                            )}
+                            {item.category === 'food' && (
+                              <>
+                                <label style={{ fontSize: '13px', color: '#666' }}>What did you eat?</label>
+                                <textarea
+                                  value={editData.note}
+                                  onChange={e => setEditData({ ...editData, note: e.target.value })}
+                                  style={{ ...styles.editInput, minHeight: '60px' }}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
+                                <input
+                                  type="time"
+                                  value={editData.time}
+                                  onChange={e => setEditData({ ...editData, time: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>Notes</label>
+                                <textarea
+                                  value={editData.notes || ''}
+                                  onChange={e => setEditData({ ...editData, notes: e.target.value })}
+                                  style={{ ...styles.editInput, minHeight: '60px' }}
+                                />
+                              </>
+                            )}
+                            {item.category === 'gym' && (
+                              <>
+                                <label style={{ fontSize: '13px', color: '#666' }}>Gym activity</label>
+                                <input
+                                  type="text"
+                                  value={editData.activity}
+                                  onChange={e => setEditData({ ...editData, activity: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
+                                <input
+                                  type="time"
+                                  value={editData.time || ''}
+                                  onChange={e => setEditData({ ...editData, time: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>Notes</label>
+                                <textarea
+                                  value={editData.notes || ''}
+                                  onChange={e => setEditData({ ...editData, notes: e.target.value })}
+                                  style={{ ...styles.editInput, minHeight: '60px' }}
+                                />
+                              </>
+                            )}
+                            {item.category === 'fasting' && (
+                              <>
+                                <label style={{ fontSize: '13px', color: '#666' }}>Start</label>
+                                <input
+                                  type="time"
+                                  value={editData.start}
+                                  onChange={e => setEditData({ ...editData, start: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>End</label>
+                                <input
+                                  type="time"
+                                  value={editData.end}
+                                  onChange={e => setEditData({ ...editData, end: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                              </>
+                            )}
+                            {item.category === 'medical' && (
+                              <>
+                                <label style={{ fontSize: '13px', color: '#666' }}>Medical event</label>
+                                <input
+                                  type="text"
+                                  value={editData.event}
+                                  onChange={e => setEditData({ ...editData, event: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
+                                <input
+                                  type="time"
+                                  value={editData.time || ''}
+                                  onChange={e => setEditData({ ...editData, time: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                                <label style={{ fontSize: '13px', color: '#666' }}>Notes</label>
+                                <textarea
+                                  value={editData.notes || ''}
+                                  onChange={e => setEditData({ ...editData, notes: e.target.value })}
+                                  style={{ ...styles.editInput, minHeight: '60px' }}
+                                />
+                              </>
+                            )}
+                            {item.category === 'weight' && (
+                              <>
+                                <div style={styles.twoColumnForm}>
+                                  <div>
+                                    <label style={{ fontSize: '13px', color: '#666' }}>Weight (kg)</label>
+                                    <input
+                                      type="number"
+                                      step="0.1"
+                                      value={editData.weight}
+                                      onChange={e => setEditData({ ...editData, weight: e.target.value })}
+                                      style={styles.editInput}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label style={{ fontSize: '13px', color: '#666' }}>Target (kg)</label>
+                                    <input
+                                      type="number"
+                                      step="0.1"
+                                      value={editData.target || ''}
+                                      onChange={e => setEditData({ ...editData, target: e.target.value })}
+                                      style={styles.editInput}
+                                    />
+                                  </div>
+                                </div>
+                                <label style={{ fontSize: '13px', color: '#666' }}>Time</label>
+                                <input
+                                  type="time"
+                                  value={editData.time || ''}
+                                  onChange={e => setEditData({ ...editData, time: e.target.value })}
+                                  style={styles.editInput}
+                                />
+                              </>
+                            )}
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                              <button
+                                onClick={() => {
+                                  saveEdit(item.category);
+                                  setTimelineEditingKey(null);
+                                }}
+                                style={styles.saveButton}
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => {
+                                  cancelEdit();
+                                  setTimelineEditingKey(null);
+                                }}
+                                style={styles.cancelButton}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => {
+                                  deleteEntry(item.category, item.entry.id);
+                                  cancelEdit();
+                                  setTimelineEditingKey(null);
+                                }}
+                                style={styles.deleteButton}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                      <div
+                        key={item.id}
+                        style={{
+                          ...styles.entry,
+                          cursor: (item.category && item.entry) || item.id === 'fast-active-start' ? 'pointer' : 'default',
+                          ...(item.milestone
+                            ? { backgroundColor: '#eafaf1', border: '2px solid #27ae60' }
+                            : {}),
+                        }}
+                        onClick={() => {
+                          if (item.id === 'fast-active-start') {
+                            setEditActiveFastTime(activeFast.startTime);
+                            setEditingActiveFastStart(true);
+                            return;
+                          }
+                          if (!item.category || !item.entry) return;
+                          startEdit(item.category, item.entry);
+                          setTimelineEditingKey(item.id);
+                        }}
+                      >
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                          <div style={{ fontSize: '20px', minWidth: '28px' }}>{item.icon}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+                              <strong style={{ flex: 1, minWidth: 0, color: item.milestone ? '#1e7e4f' : 'inherit' }}>{item.label}</strong>
+                              <span style={{ color: item.milestone ? '#1e7e4f' : '#666', fontWeight: '600', fontSize: '16px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                {formatTime12h(item.time)}
+                              </span>
+                            </div>
+                            {item.detail && (
+                              <div style={{ marginTop: '0.3rem', fontSize: '14px', color: '#666' }}>{item.detail}</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {dayTimeline.length === 0 && (
+                <div style={styles.card}>
+                  <div style={styles.emptyState}>No entries yet. Start tracking!</div>
+                </div>
+              )}
+              {renderAddEntryCard()}
+            </div>
+          )}
+
+          {/* Settings Tab */}
+          {activeTab === 'settings' && (
+            <div style={styles.content}>
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>⚖️ Target Weight</div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Target weight (kg)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    placeholder="e.g., 70"
+                    value={appSettings.targetWeight}
+                    onChange={e => {
+                      setAppSettings({ ...appSettings, targetWeight: e.target.value });
+                      flashSettingsSaved('targetWeight');
+                    }}
+                    style={styles.input}
+                  />
+                  {settingsSavedFlash === 'targetWeight' && (
+                    <div style={{ fontSize: '13px', color: '#27ae60', fontWeight: '600', marginTop: '0.4rem' }}>✓ Saved</div>
+                  )}
+                </div>
+                <div style={{ fontSize: '13px', color: '#666' }}>
+                  Used automatically when you log your weight, and shown on the Dashboard.
+                </div>
+              </div>
+
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>⏳ Fasting Goal</div>
+                <div style={styles.twoColumnForm}>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Goal hours</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={appSettings.fastingGoalHours}
+                      onChange={e => {
+                        setAppSettings({ ...appSettings, fastingGoalHours: parseFloat(e.target.value) || 0 });
+                        flashSettingsSaved('fastingGoalHours');
+                      }}
+                      style={styles.input}
+                    />
+                    {settingsSavedFlash === 'fastingGoalHours' && (
+                      <div style={{ fontSize: '13px', color: '#27ae60', fontWeight: '600', marginTop: '0.4rem' }}>✓ Saved</div>
+                    )}
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Daily start time</label>
+                    <input
+                      type="time"
+                      value={appSettings.fastingStartTime}
+                      onChange={e => {
+                        setAppSettings({ ...appSettings, fastingStartTime: e.target.value });
+                        flashSettingsSaved('fastingStartTime');
+                      }}
+                      style={styles.input}
+                    />
+                    {settingsSavedFlash === 'fastingStartTime' && (
+                      <div style={{ fontSize: '13px', color: '#27ae60', fontWeight: '600', marginTop: '0.4rem' }}>✓ Saved</div>
+                    )}
+                  </div>
+                </div>
+                <div style={{ fontSize: '13px', color: '#666' }}>
+                  Goal hours sets when "✅ Goal met" shows. Daily start time drives the "Next fast starts at..." prediction on the Dashboard.
+                </div>
+              </div>
+
+              {Object.keys(recurringSupps).length > 0 && (
+                <div style={styles.card}>
+                  <div style={styles.cardTitle}>🔁 Recurring Supplements</div>
+                  {Object.values(recurringSupps)
+                    .slice()
+                    .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+                    .map(supp => {
+                      const isEditingThis = editingRecurringId === supp.id;
+
+                      if (isEditingThis) {
+                        return (
+                          <div
+                            key={supp.id}
+                            style={{
+                              padding: '1rem 1.25rem',
+                              backgroundColor: '#fff',
+                              border: '2px solid #333',
+                              borderRadius: '8px',
+                              marginBottom: '0.75rem',
+                            }}
+                          >
+                            <label style={{ fontSize: '13px', color: '#666' }}>Supplement name</label>
+                            <input
+                              type="text"
+                              value={editRecurringData.name}
+                              onChange={e => setEditRecurringData({ ...editRecurringData, name: e.target.value })}
+                              style={styles.editInput}
+                            />
+                            <label style={{ fontSize: '13px', color: '#666' }}>Frequency</label>
+                            <select
+                              value={editRecurringData.frequency || 'daily'}
+                              onChange={e => setEditRecurringData({ ...editRecurringData, frequency: e.target.value })}
+                              style={styles.editInput}
+                            >
+                              <option value="daily">Daily</option>
+                              <option value="weekly">Weekly</option>
+                            </select>
+                            {editRecurringData.frequency === 'weekly' && (
+                              <>
+                                <label style={{ fontSize: '13px', color: '#666' }}>Day of week</label>
+                                <select
+                                  value={editRecurringData.dayOfWeek ?? '1'}
+                                  onChange={e => setEditRecurringData({ ...editRecurringData, dayOfWeek: e.target.value })}
+                                  style={styles.editInput}
+                                >
+                                  {dayNames.map((day, idx) => (
+                                    <option key={idx} value={idx}>{day}</option>
+                                  ))}
+                                </select>
+                              </>
+                            )}
+                            <label style={{ fontSize: '13px', color: '#666' }}>Time to remind me</label>
+                            <input
+                              type="time"
+                              value={editRecurringData.time}
+                              onChange={e => setEditRecurringData({ ...editRecurringData, time: e.target.value })}
+                              style={styles.editInput}
+                            />
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                              <button onClick={saveEditRecurring} style={styles.saveButton}>Save</button>
+                              <button onClick={cancelEditRecurring} style={styles.cancelButton}>Cancel</button>
+                              <button onClick={() => deleteRecurring(supp.id)} style={styles.deleteButton}>Delete</button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={supp.id}
+                          onClick={() => startEditRecurring(supp)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '1rem 1.25rem',
+                            backgroundColor: '#fff',
+                            border: '2px solid #e0e0e0',
+                            borderRadius: '8px',
+                            marginBottom: '0.75rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0, fontWeight: '600', fontSize: '17px', color: '#333' }}>
+                            {supp.name}
+                          </div>
+                          <div style={{ fontSize: '15px', color: '#666', fontWeight: '600', flexShrink: 0 }}>
+                            {supp.frequency === 'weekly'
+                              ? `Weekly (${dayNames[parseInt(supp.dayOfWeek, 10)]}) at ${formatTime12h(supp.time)}`
+                              : `Daily at ${formatTime12h(supp.time)}`}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  {!showAddRecurringSupp && (
+                    <div
+                      onClick={() => setShowAddRecurringSupp(true)}
+                      style={{ textAlign: 'center', color: '#666', fontWeight: '600', fontSize: '14px', cursor: 'pointer', marginTop: '0.5rem' }}
+                    >
+                      + Add Recurring Supplement
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {(showAddRecurringSupp || Object.keys(recurringSupps).length === 0) && (
+                <div style={styles.card}>
+                  <div style={styles.cardTitle}>🔁 Add Recurring Supplement</div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Supplement name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Magnesium"
+                      value={formData.recurringName}
+                      onChange={e => setFormData({ ...formData, recurringName: e.target.value })}
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Frequency</label>
+                    <select
+                      value={formData.recurringFrequency}
+                      onChange={e => setFormData({ ...formData, recurringFrequency: e.target.value })}
+                      style={styles.select}
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                    </select>
+                  </div>
+                  {formData.recurringFrequency === 'weekly' && (
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Day of week</label>
+                      <select
+                        value={formData.recurringDayOfWeek}
+                        onChange={e => setFormData({ ...formData, recurringDayOfWeek: e.target.value })}
+                        style={styles.select}
+                      >
+                        {dayNames.map((day, idx) => (
+                          <option key={idx} value={idx}>{day}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Time to remind me</label>
+                    <input
+                      type="time"
+                      value={formData.recurringTime}
+                      onChange={e => setFormData({ ...formData, recurringTime: e.target.value })}
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => {
+                        if (formData.recurringName && formData.recurringTime) {
+                          setRecurringSupps(prev => ({
+                            ...prev,
+                            [Date.now()]: {
+                              id: Date.now(),
+                              name: formData.recurringName,
+                              time: formData.recurringTime,
+                              frequency: formData.recurringFrequency,
+                              dayOfWeek: formData.recurringFrequency === 'weekly' ? formData.recurringDayOfWeek : undefined,
+                            }
+                          }));
+                          setFormData({ ...formData, recurringName: '', recurringTime: '', recurringFrequency: 'daily', recurringDayOfWeek: '1' });
+                          setShowAddRecurringSupp(false);
+                        }
+                      }}
+                      style={styles.button}
+                    >
+                      Add Recurring Supplement
+                    </button>
+                    {Object.keys(recurringSupps).length > 0 && (
+                      <button onClick={() => setShowAddRecurringSupp(false)} style={styles.cancelButton}>Cancel</button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {Object.keys(recurringGym).length > 0 && (
+                <div style={styles.card}>
+                  <div style={styles.cardTitle}>🔁 Recurring Gym Activities</div>
+                  {Object.values(recurringGym)
+                    .slice()
+                    .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+                    .map(item => {
+                      const isEditingThis = editingGymRecurringId === item.id;
+
+                      if (isEditingThis) {
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              padding: '1rem 1.25rem',
+                              backgroundColor: '#fff',
+                              border: '2px solid #333',
+                              borderRadius: '8px',
+                              marginBottom: '0.75rem',
+                            }}
+                          >
+                            <label style={{ fontSize: '13px', color: '#666' }}>Activity name</label>
+                            <input
+                              type="text"
+                              value={editGymRecurringData.name}
+                              onChange={e => setEditGymRecurringData({ ...editGymRecurringData, name: e.target.value })}
+                              style={styles.editInput}
+                            />
+                            <label style={{ fontSize: '13px', color: '#666' }}>Frequency</label>
+                            <select
+                              value={editGymRecurringData.frequency || 'daily'}
+                              onChange={e => setEditGymRecurringData({ ...editGymRecurringData, frequency: e.target.value })}
+                              style={styles.editInput}
+                            >
+                              <option value="daily">Daily</option>
+                              <option value="weekly">Weekly</option>
+                            </select>
+                            {editGymRecurringData.frequency === 'weekly' && (
+                              <>
+                                <label style={{ fontSize: '13px', color: '#666' }}>Day of week</label>
+                                <select
+                                  value={editGymRecurringData.dayOfWeek ?? '1'}
+                                  onChange={e => setEditGymRecurringData({ ...editGymRecurringData, dayOfWeek: e.target.value })}
+                                  style={styles.editInput}
+                                >
+                                  {dayNames.map((day, idx) => (
+                                    <option key={idx} value={idx}>{day}</option>
+                                  ))}
+                                </select>
+                              </>
+                            )}
+                            <label style={{ fontSize: '13px', color: '#666' }}>Time to remind me</label>
+                            <input
+                              type="time"
+                              value={editGymRecurringData.time}
+                              onChange={e => setEditGymRecurringData({ ...editGymRecurringData, time: e.target.value })}
+                              style={styles.editInput}
+                            />
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                              <button onClick={saveEditRecurringGym} style={styles.saveButton}>Save</button>
+                              <button onClick={cancelEditRecurringGym} style={styles.cancelButton}>Cancel</button>
+                              <button onClick={() => deleteRecurringGym(item.id)} style={styles.deleteButton}>Delete</button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => startEditRecurringGym(item)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '1rem 1.25rem',
+                            backgroundColor: '#fff',
+                            border: '2px solid #e0e0e0',
+                            borderRadius: '8px',
+                            marginBottom: '0.75rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0, fontWeight: '600', fontSize: '17px', color: '#333' }}>
+                            {item.name}
+                          </div>
+                          <div style={{ fontSize: '15px', color: '#666', fontWeight: '600', flexShrink: 0 }}>
+                            {item.frequency === 'weekly'
+                              ? `Weekly (${dayNames[parseInt(item.dayOfWeek, 10)]}) at ${formatTime12h(item.time)}`
+                              : `Daily at ${formatTime12h(item.time)}`}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  {!showAddRecurringGym && (
+                    <div
+                      onClick={() => setShowAddRecurringGym(true)}
+                      style={{ textAlign: 'center', color: '#666', fontWeight: '600', fontSize: '14px', cursor: 'pointer', marginTop: '0.5rem' }}
+                    >
+                      + Add Recurring Gym Activity
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {(showAddRecurringGym || Object.keys(recurringGym).length === 0) && (
+                <div style={styles.card}>
+                  <div style={styles.cardTitle}>🔁 Add Recurring Gym Activity</div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Activity name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Planet Fitness — Leg Day"
+                      value={formData.recurringGymName}
+                      onChange={e => setFormData({ ...formData, recurringGymName: e.target.value })}
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Frequency</label>
+                    <select
+                      value={formData.recurringGymFrequency}
+                      onChange={e => setFormData({ ...formData, recurringGymFrequency: e.target.value })}
+                      style={styles.select}
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                    </select>
+                  </div>
+                  {formData.recurringGymFrequency === 'weekly' && (
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Day of week</label>
+                      <select
+                        value={formData.recurringGymDayOfWeek}
+                        onChange={e => setFormData({ ...formData, recurringGymDayOfWeek: e.target.value })}
+                        style={styles.select}
+                      >
+                        {dayNames.map((day, idx) => (
+                          <option key={idx} value={idx}>{day}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Time to remind me</label>
+                    <input
+                      type="time"
+                      value={formData.recurringGymTime}
+                      onChange={e => setFormData({ ...formData, recurringGymTime: e.target.value })}
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => {
+                        if (formData.recurringGymName && formData.recurringGymTime) {
+                          setRecurringGym(prev => ({
+                            ...prev,
+                            [Date.now()]: {
+                              id: Date.now(),
+                              name: formData.recurringGymName,
+                              time: formData.recurringGymTime,
+                              frequency: formData.recurringGymFrequency,
+                              dayOfWeek: formData.recurringGymFrequency === 'weekly' ? formData.recurringGymDayOfWeek : undefined,
+                            }
+                          }));
+                          setFormData({ ...formData, recurringGymName: '', recurringGymTime: '', recurringGymFrequency: 'daily', recurringGymDayOfWeek: '1' });
+                          setShowAddRecurringGym(false);
+                        }
+                      }}
+                      style={styles.button}
+                    >
+                      Add Recurring Gym Activity
+                    </button>
+                    {Object.keys(recurringGym).length > 0 && (
+                      <button onClick={() => setShowAddRecurringGym(false)} style={styles.cancelButton}>Cancel</button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* History Tab */}
+          {activeTab === 'history' && (
+            <div style={styles.content}>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#333', marginBottom: '1.25rem' }}>
+                📈 Stats and History
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                <div
+                  role="button"
+                  onClick={() => setHistoryView('list')}
+                  style={{
+                    flex: 1,
+                    textAlign: 'center',
+                    padding: '0.9rem',
+                    borderRadius: '8px',
+                    fontWeight: '700',
+                    fontSize: '16px',
+                    cursor: 'pointer',
+                    backgroundColor: historyView === 'list' ? '#333' : '#fff',
+                    color: historyView === 'list' ? '#fff' : '#333',
+                    border: `2px solid ${historyView === 'list' ? '#333' : '#e0e0e0'}`,
+                  }}
+                >
+                  📃 List
+                </div>
+                <div
+                  role="button"
+                  onClick={() => setHistoryView('charts')}
+                  style={{
+                    flex: 1,
+                    textAlign: 'center',
+                    padding: '0.9rem',
+                    borderRadius: '8px',
+                    fontWeight: '700',
+                    fontSize: '16px',
+                    cursor: 'pointer',
+                    backgroundColor: historyView === 'charts' ? '#333' : '#fff',
+                    color: historyView === 'charts' ? '#fff' : '#333',
+                    border: `2px solid ${historyView === 'charts' ? '#333' : '#e0e0e0'}`,
+                  }}
+                >
+                  📊 Charts
+                </div>
+              </div>
+
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>🔍 Filters</div>
+                {historyView === 'list' && (
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Type</label>
+                    <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                      {[
+                        { type: 'symptoms', icon: '🤒', label: 'Symptom' },
+                        { type: 'food', icon: '🍎', label: 'Food' },
+                        { type: 'supplements', icon: '💊', label: 'Supplement' },
+                        { type: 'gym', icon: '🏋️‍♀️', label: 'Gym' },
+                        { type: 'medical', icon: '⛑️', label: 'Medical' },
+                        { type: 'weight', icon: '⚖️', label: 'Weight' },
+                        { type: 'fasting', icon: '⏳', label: 'Fasting' },
+                      ].map(opt => {
+                        const selected = historyTypeFilters.includes(opt.type);
+                        return (
+                          <div
+                            key={opt.type}
+                            role="button"
+                            onClick={() => {
+                              setHistoryTypeFilters(prev =>
+                                selected ? prev.filter(t => t !== opt.type) : [...prev, opt.type]
+                              );
+                            }}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: '0.3rem',
+                              padding: '0.75rem 0.4rem',
+                              border: selected ? '2px solid #333' : '2px solid #e0e0e0',
+                              backgroundColor: selected ? '#333' : '#fff',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              minWidth: '68px',
+                              flex: '1 1 68px',
+                            }}
+                          >
+                            <div style={{ fontSize: '22px' }}>{opt.icon}</div>
+                            <div style={{ fontSize: '11px', fontWeight: '600', color: selected ? '#fff' : '#333' }}>{opt.label}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                <div style={styles.twoColumnForm}>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>From</label>
+                    <input
+                      type="date"
+                      value={historyDateFrom}
+                      onChange={e => setHistoryDateFrom(e.target.value)}
+                      style={{ ...styles.input, fontSize: '15px', padding: '0.75rem 0.5rem' }}
+                    />
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>To</label>
+                    <input
+                      type="date"
+                      value={historyDateTo}
+                      onChange={e => setHistoryDateTo(e.target.value)}
+                      style={{ ...styles.input, fontSize: '15px', padding: '0.75rem 0.5rem' }}
+                    />
+                  </div>
+                </div>
+                {(() => {
+                  const today = formatDateLocal(new Date());
+                  const sevenDaysAgoDate = new Date();
+                  sevenDaysAgoDate.setDate(sevenDaysAgoDate.getDate() - 7);
+                  const sevenDaysAgo = formatDateLocal(sevenDaysAgoDate);
+                  const isDefault = historyTypeFilters.length === 0 && historyDateFrom === sevenDaysAgo && historyDateTo === today;
+                  if (isDefault) return null;
+                  return (
+                    <div
+                      onClick={() => {
+                        setHistoryTypeFilters([]);
+                        setHistoryDateFrom(sevenDaysAgo);
+                        setHistoryDateTo(today);
+                      }}
+                      style={{ textAlign: 'center', color: '#666', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
+                    >
+                      Reset filters
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {historyView === 'list' && (() => {
+                const dates = Object.keys(entries)
+                  .filter(d => (!historyDateFrom || d >= historyDateFrom) && (!historyDateTo || d <= historyDateTo))
+                  .sort()
+                  .reverse();
+
+                const dayGroups = dates
+                  .map(d => ({ date: d, items: buildDayItemsForHistory(entries[d] || {}, historyTypeFilters) }))
+                  .filter(g => g.items.length > 0);
+
+                if (dayGroups.length === 0) {
+                  return (
+                    <div style={styles.card}>
+                      <div style={styles.emptyState}>No entries match these filters.</div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div style={styles.card}>
+                    {dayGroups.map(group => (
+                      <div key={group.date}>
+                        <div style={{ fontWeight: '700', fontSize: '15px', color: '#333', marginTop: '1.25rem', marginBottom: '0.25rem' }}>
+                          {parseLocalDate(group.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                        </div>
+                        {group.items.map((item, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => {
+                              setCurrentDate(group.date);
+                              setActiveTab('timeline');
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.6rem',
+                              padding: '0.6rem 0',
+                              borderBottom: '1px solid #eee',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <div style={{ fontSize: '16px', minWidth: '22px' }}>{item.icon}</div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '15px', fontWeight: '600', color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {item.label}
+                              </div>
+                              {item.detail && (
+                                <div style={{ fontSize: '12px', color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {item.detail}
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ fontSize: '13px', color: '#666', fontWeight: '600', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              {formatTime12h(item.time)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {historyView === 'charts' && (
+                <div style={styles.card}>
+                  <div style={styles.cardTitle}>⚖️ Weight Trend</div>
+                  {(() => {
+                    const hasData = Object.keys(entries).some(d => {
+                      if (historyDateFrom && d < historyDateFrom) return false;
+                      if (historyDateTo && d > historyDateTo) return false;
+                      const w = entries[d] && entries[d].weight;
+                      return w && w.length > 0;
+                    });
+                    if (!hasData) {
+                      return <div style={styles.emptyState}>No weight entries in this date range yet.</div>;
+                    }
+                    return (
+                      <div style={{ position: 'relative', height: '280px' }}>
+                        <canvas ref={weightChartRef}></canvas>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {historyView === 'charts' && (
+                <div style={styles.card}>
+                  <div style={styles.cardTitle}>⏳ Fasting Duration</div>
+                  {(() => {
+                    const hasData = Object.keys(entries).some(d => {
+                      if (historyDateFrom && d < historyDateFrom) return false;
+                      if (historyDateTo && d > historyDateTo) return false;
+                      const f = entries[d] && entries[d].fasting;
+                      return f && f.length > 0;
+                    });
+                    if (!hasData) {
+                      return <div style={styles.emptyState}>No fasting entries in this date range yet.</div>;
+                    }
+                    return (
+                      <div style={{ position: 'relative', height: '280px' }}>
+                        <canvas ref={fastingChartRef}></canvas>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {historyView === 'charts' && (
+                <div style={styles.card}>
+                  <div style={styles.cardTitle}>🔗 Food–Symptom Patterns</div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Look back window</label>
+                    <select
+                      value={correlationWindowHours}
+                      onChange={e => setCorrelationWindowHours(parseFloat(e.target.value))}
+                      style={styles.select}
+                    >
+                      <option value={2}>Within 2 hours</option>
+                      <option value={4}>Within 4 hours</option>
+                      <option value={6}>Within 6 hours</option>
+                      <option value={12}>Within 12 hours</option>
+                      <option value={24}>Any time that day</option>
+                    </select>
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Minimum severity</label>
+                    <input
+                      type="range"
+                      min="1"
+                      max="5"
+                      value={minSeverityFilter}
+                      onChange={e => setMinSeverityFilter(parseInt(e.target.value))}
+                      style={{ width: '100%' }}
+                    />
+                    <div style={{ textAlign: 'center', fontSize: '13px', color: '#666', marginTop: '0.3rem' }}>
+                      Level: {minSeverityFilter}+ / 5
+                    </div>
+                  </div>
+                  {(() => {
+                    const dayGroups = getSymptomFoodContext(historyDateFrom, historyDateTo, correlationWindowHours, minSeverityFilter);
+                    if (dayGroups.length === 0) {
+                      return (
+                        <div style={styles.emptyState}>
+                          No symptoms with a time logged in this range yet.
+                        </div>
+                      );
+                    }
+
+                    const formatDuration = (diffMin) => {
+                      const h = Math.floor(diffMin / 60);
+                      const m = diffMin % 60;
+                      if (h === 0) return `${m}m before`;
+                      if (m === 0) return `${h}h before`;
+                      return `${h}h ${m}m before`;
+                    };
+
+                    return (
+                      <div>
+                        {dayGroups.map(group => (
+                          <div key={group.date}>
+                            <div style={{ fontWeight: '700', fontSize: '15px', color: '#333', marginTop: '1.25rem', marginBottom: '0.25rem' }}>
+                              {parseLocalDate(group.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                            </div>
+                            {group.symptomRows.map(({ symptom, precedingFoods }) => (
+                              <div key={symptom.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid #eee' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
+                                  <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>
+                                    🤒 {symptom.symptom} — Level {symptom.level}/5
+                                  </div>
+                                  <div style={{ fontSize: '14px', color: '#666', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                                    {formatTime12h(symptom.time)}
+                                  </div>
+                                </div>
+                                {precedingFoods.length === 0 ? (
+                                  <div style={{ fontSize: '13px', color: '#999', marginTop: '0.4rem', marginLeft: '1.5rem' }}>
+                                    No food logged in this window.
+                                  </div>
+                                ) : (
+                                  <div style={{ marginTop: '0.4rem', marginLeft: '1.5rem' }}>
+                                    {precedingFoods.map((c, idx) => (
+                                      <div
+                                        key={idx}
+                                        style={{
+                                          display: 'flex',
+                                          justifyContent: 'space-between',
+                                          gap: '0.75rem',
+                                          fontSize: '13px',
+                                          color: '#666',
+                                          marginBottom: '0.2rem',
+                                        }}
+                                      >
+                                        <span>🍎 {c.food.note}</span>
+                                        <span style={{ whiteSpace: 'nowrap', color: '#999' }}>{formatDuration(c.diffMin)}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<DailyTrackerApp />);
+  </script>
+<script>document.getElementById('export-legacy').onclick=()=>{const data={};for(const key of ['trackerData','recurringSupps','recurringGym','appSettings','activeFast']){const raw=localStorage.getItem(key);try{data[key]=raw?JSON.parse(raw):(key==='activeFast'?null:{});}catch{data[key]=raw;}}const blob=new Blob([JSON.stringify({format:'spartacus-legacy',version:1,exportedAt:new Date().toISOString(),data},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='spartacus-legacy.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};</script></body>
+</html>
