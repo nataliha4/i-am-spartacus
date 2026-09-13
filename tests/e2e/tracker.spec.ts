@@ -124,6 +124,9 @@ test("familiar tracker: login, import, every screen, confirmed save, restart and
     sessionStorage.clear();
   });
   await page.reload();
+  // Reload selects today in the imported timezone, which may differ from
+  // the browser's original day. Reopen the day where this entry was saved.
+  await page.getByLabel("Tracker date").fill(selectedDate);
   await page.getByRole("button", { name: "Day Timeline", exact: true }).click();
   await expect(
     page
