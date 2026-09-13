@@ -38,14 +38,23 @@ export const settingsSchema = z
     targetWeight: z.union([positive, z.literal("")]),
     fastingGoalHours: z.coerce.number().positive().max(168),
     fastingStartTime: timeSchema,
-    timezone: z.string().refine((value) => {
-      try {
-        Temporal.Now.zonedDateTimeISO(value);
-        return true;
-      } catch {
-        return false;
-      }
-    }, "Invalid timezone"),
+    // Piped so the length check short-circuits: chaining .refine() after
+    // .max() still runs the refinement, and resolving a multi-megabyte zone
+    // name costs hundreds of milliseconds of blocking CPU. Longest real IANA
+    // identifier is well under this bound.
+    timezone: z
+      .string()
+      .max(64)
+      .pipe(
+        z.string().refine((value) => {
+          try {
+            Temporal.Now.zonedDateTimeISO(value);
+            return true;
+          } catch {
+            return false;
+          }
+        }, "Invalid timezone"),
+      ),
   })
   .strict();
 export const defaults = {
@@ -163,8 +172,17 @@ export const operationSchema = z.discriminatedUnion("action", [
     .strict(),
 ]);
 export type Operation = z.infer<typeof operationSchema>;
+// Bound the collection before validating its contents. Zod applies array
+// length checks after parsing every element, so validating first lets an
+// in-limit body allocate an issue per rejected operation.
 export const commitSchema = z
-  .object({ operations: z.array(operationSchema).min(1).max(1000) })
+  .object({
+    operations: z
+      .array(z.unknown())
+      .min(1)
+      .max(1000)
+      .pipe(z.array(operationSchema)),
+  })
   .strict();
 export type Snapshot = { rows: Row[] };
 
@@ -256,6 +274,18 @@ export function scheduledOn(
     schedule.frequency !== "weekly" ||
     Temporal.PlainDate.from(date).dayOfWeek % 7 === Number(schedule.dayOfWeek)
   );
+}
+/** Formats a bounded prefix of a validation failure. A rejected collection can
+ * carry one issue per element, so the joined text is never allowed to scale
+ * with the request. */
+export const MAX_REPORTED_ISSUES = 20;
+export function formatIssues(error: z.ZodError): string {
+  const shown = error.issues
+    .slice(0, MAX_REPORTED_ISSUES)
+    .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+    .join("; ");
+  const hidden = error.issues.length - MAX_REPORTED_ISSUES;
+  return hidden > 0 ? `${shown}; and ${hidden} more problems` : shown;
 }
 export class JsonDepthError extends Error {}
 export function canonical(value: unknown, depth = 0): string {

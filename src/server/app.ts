@@ -18,6 +18,7 @@ import {
   JsonDepthError,
   commitSchema,
   defaults,
+  formatIssues,
   settingsSchema,
   validateRow,
 } from "../shared/model";
@@ -102,15 +103,10 @@ export function createApp(database: Database) {
     }
   });
   const bodyReader = new BodyReader();
+  // Unauthenticated sign-in traffic gets its own capacity so slow bodies
+  // cannot starve signed-in users' writes, which share the reader above.
+  const authBodyReader = new BodyReader();
   const imports = new ConcurrencyGate(2, 1);
-  app.use("/api/auth/*", async (c, next) => {
-    c.req.raw = await bodyReader.read(
-      c.req.raw,
-      c.get("clientIP"),
-      REQUEST_BODY_BYTES,
-    );
-    await next();
-  });
   // No admin, password signup, or password recovery routes are exposed by the web application.
   const authPaths = new Set([
     "/sign-in/email",
@@ -121,6 +117,8 @@ export function createApp(database: Database) {
     "/change-password",
   ]);
   app.all("/api/auth/*", async (c) => {
+    // Route and origin are settled before any body is accepted, so unknown
+    // paths and cross-origin posts never occupy a read slot.
     if (!authPaths.has(c.req.path.slice("/api/auth".length)))
       return c.json(
         { error: { code: "NOT_FOUND", message: "Not found" } },
@@ -135,6 +133,11 @@ export function createApp(database: Database) {
         "INVALID_ORIGIN",
         "Request origin is not allowed",
       );
+    c.req.raw = await authBodyReader.read(
+      c.req.raw,
+      c.get("clientIP"),
+      REQUEST_BODY_BYTES,
+    );
     const clientIP = c.get("clientIP");
     if (!clientIP || !isValidIP(clientIP))
       throw new AppError(
@@ -476,14 +479,7 @@ export function createApp(database: Database) {
   app.onError((error, c) => {
     if (error instanceof z.ZodError)
       return c.json(
-        {
-          error: {
-            code: "VALIDATION",
-            message: error.issues
-              .map((i) => `${i.path.join(".")}: ${i.message}`)
-              .join("; "),
-          },
-        },
+        { error: { code: "VALIDATION", message: formatIssues(error) } },
         400,
       );
     if (error instanceof JsonDepthError)

@@ -493,50 +493,73 @@ test("authenticated imports have bounded bodies and per-account concurrency", as
   ).toBe(413);
 });
 
-test("unfinished unauthenticated bodies cannot fill every processing slot", async () => {
+test("unauthenticated body reads cannot starve authenticated writes", async () => {
   const isolated = createApp(database).app;
+  const { cookie } = await account();
   const controllers: ReadableStreamDefaultController<Uint8Array>[] = [];
-  const pending = Array.from({ length: 4 }, (_, i) =>
+  const signIn = (clientIP: string, body: BodyInit) =>
     isolated.request(
-      "/api/auth/not-a-route",
+      "/api/auth/sign-in/email",
       {
         method: "POST",
-        body: new ReadableStream<Uint8Array>({
-          start(c) {
-            controllers.push(c);
-            c.enqueue(new TextEncoder().encode("{"));
-          },
-        }),
+        headers: {
+          origin: "http://localhost:5173",
+          "content-type": "application/json",
+        },
+        body,
       },
-      { clientIP: i < 2 ? "192.0.2.210" : "192.0.2.211" },
+      { clientIP },
+    );
+  // Occupy every unauthenticated read slot with bodies that never finish.
+  const pending = Array.from({ length: 4 }, (_, i) =>
+    signIn(
+      i < 2 ? "192.0.2.210" : "192.0.2.211",
+      new ReadableStream<Uint8Array>({
+        start(c) {
+          controllers.push(c);
+          c.enqueue(new TextEncoder().encode("{"));
+        },
+      }),
     ),
   );
   try {
-    const unrelated = await isolated.request(
+    // Unknown routes are settled before a body is accepted, so a request that
+    // can never succeed never occupies capacity.
+    const unknown = await isolated.request(
       "/api/auth/not-a-route",
-      {},
+      { method: "POST", body: "{}" },
       { clientIP: "192.0.2.212" },
     );
-    expect(unrelated.status).toBe(404);
-    for (let i = 0; i < 20; i++) {
-      const rejected = await isolated.request(
-        "/api/auth/not-a-route",
-        { method: "POST", body: "{}" },
-        { clientIP: "192.0.2.213" },
-      );
-      expect(rejected.status).toBe(429);
-    }
+    expect(unknown.status).toBe(404);
+    // Further unauthenticated sign-in bodies are shed, as intended.
+    expect((await signIn("192.0.2.213", "{}")).status).toBe(429);
+    // A signed-in user's write proceeds on its own reserved capacity.
+    const saved = await isolated.request(
+      "/api/v1/commit",
+      {
+        method: "POST",
+        headers: {
+          cookie,
+          origin: "http://localhost:5173",
+          "content-type": "application/json",
+          "idempotency-key": crypto.randomUUID(),
+        },
+        body: JSON.stringify({
+          operations: [
+            {
+              action: "put",
+              row: row("settings", { ...defaults, timezone: "UTC" }),
+            },
+          ],
+        }),
+      },
+      { clientIP: "192.0.2.214" },
+    );
+    expect(saved.status).toBe(200);
   } finally {
     controllers.forEach((c) => c.close());
     await Promise.all(pending);
   }
-  expect(
-    (
-      await isolated.request(
-        "/api/auth/not-a-route",
-        { method: "POST", body: "{}" },
-        { clientIP: "192.0.2.213" },
-      )
-    ).status,
-  ).toBe(404);
+  // Capacity is released once the unfinished bodies end.
+  expect((await signIn("192.0.2.213", "{}")).status).not.toBe(429);
 });

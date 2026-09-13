@@ -4,6 +4,7 @@ import {
   instant,
   localDate,
   previousDate,
+  formatIssues,
   validateRow,
   type Row,
 } from "./model";
@@ -18,6 +19,8 @@ const MAX_IMPORT_RECORDS = 50000;
 const limitMessage = "Export exceeds the 50,000 record import limit";
 const records = z.array(z.unknown()).max(MAX_IMPORT_RECORDS, limitMessage);
 const object = z.record(z.string(), z.unknown());
+// Length-bounded before element validation, for the same reason as commitSchema.
+const markers = records.pipe(z.array(z.string()));
 export function prepareImport(file: unknown, timezone: string): ImportPreview {
   const result: ImportPreview = {
     rows: [],
@@ -57,7 +60,7 @@ export function prepareImport(file: unknown, timezone: string): ImportPreview {
         1;
     } catch (error) {
       result.issues.push(
-        `${label}: ${error instanceof z.ZodError ? error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") : "Invalid record"}`,
+        `${label}: ${error instanceof z.ZodError ? formatIssues(error) : "Invalid record"}`,
       );
     }
   };
@@ -182,10 +185,8 @@ export function prepareImport(file: unknown, timezone: string): ImportPreview {
               );
           }
         }
-        const done = new Set(z.array(z.string()).parse(day.dueDismissed ?? []));
-        const failed = new Set(
-          z.array(z.string()).parse(day.failedRecurring ?? []),
-        );
+        const done = new Set(markers.parse(day.dueDismissed ?? []));
+        const failed = new Set(markers.parse(day.failedRecurring ?? []));
         for (const key of new Set([...done, ...failed])) {
           let reference: string;
           if (key.startsWith("recurring-gym-"))
@@ -246,9 +247,7 @@ export function prepareImport(file: unknown, timezone: string): ImportPreview {
   } catch (error) {
     result.issues.push(
       error instanceof z.ZodError
-        ? error.issues
-            .map((i) => `${i.path.join(".")}: ${i.message}`)
-            .join("; ")
+        ? formatIssues(error)
         : String(error instanceof Error ? error.message : error),
     );
   }
