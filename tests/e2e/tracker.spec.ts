@@ -292,6 +292,11 @@ test("weight forms, timezone and fasting actions persist schema-valid data", asy
     page.getByText("Timezone saved. Existing dates are preserved."),
   ).toBeVisible();
   await page.getByRole("button", { name: "Account & data" }).click();
+  // Changing timezone preserves the selected date. Select today in the new
+  // timezone before exercising live fasting actions, including around midnight.
+  await page
+    .getByLabel("Tracker date")
+    .fill(new Date().toISOString().slice(0, 10));
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByPlaceholder("e.g., 70").fill("65");
   await page.locator('input[type="number"]').nth(1).fill("14");
@@ -334,7 +339,13 @@ test("weight forms, timezone and fasting actions persist schema-valid data", asy
   await timeline.locator('input[type="time"]').first().fill("00:00");
   await timeline.getByRole("button", { name: "Save", exact: true }).click();
   await timeline.getByText(/Fast ended/).click();
+  const deletedFast = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/v1/commit") &&
+      response.request().method() === "POST",
+  );
   await timeline.getByRole("button", { name: "Delete", exact: true }).click();
+  expect((await deletedFast).status()).toBe(200);
   await expect(timeline.getByText(/Fast ended/)).toHaveCount(0);
   await page.reload();
   const snapshot = await (await page.request.get("/api/v1/state")).json();
@@ -398,7 +409,12 @@ for (const schedule of [
     await page
       .getByRole("button", { name: `Add ${schedule.label}`, exact: true })
       .click();
-    await page.getByText(name, { exact: true }).click();
+    const scheduleName = page.getByText(name, { exact: true });
+    await expect(scheduleName).toBeVisible();
+    await expect
+      .poll(async () => (await scheduleName.boundingBox())?.width ?? 0)
+      .toBeGreaterThan(50);
+    await scheduleName.click();
     const editor = page
       .locator("div")
       .filter({ has: page.getByRole("button", { name: "Save", exact: true }) })

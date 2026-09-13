@@ -296,6 +296,7 @@ export default function Settings({ model }) {
                   onClick={() => startEditRecurring(supp)}
                   style={{
                     display: "flex",
+                    flexWrap: "wrap",
                     alignItems: "center",
                     gap: "0.75rem",
                     padding: "1rem 1.25rem",
@@ -308,7 +309,7 @@ export default function Settings({ model }) {
                 >
                   <div
                     style={{
-                      flex: 1,
+                      flex: "1 1 10rem",
                       minWidth: 0,
                       fontWeight: "600",
                       fontSize: "17px",
@@ -322,7 +323,7 @@ export default function Settings({ model }) {
                       fontSize: "15px",
                       color: "#666",
                       fontWeight: "600",
-                      flexShrink: 0,
+                      flexShrink: 1,
                     }}
                   >
                     {supp.frequency === "weekly"
@@ -619,6 +620,7 @@ export default function Settings({ model }) {
                   onClick={() => startEditRecurringGym(item)}
                   style={{
                     display: "flex",
+                    flexWrap: "wrap",
                     alignItems: "center",
                     gap: "0.75rem",
                     padding: "1rem 1.25rem",
@@ -631,7 +633,7 @@ export default function Settings({ model }) {
                 >
                   <div
                     style={{
-                      flex: 1,
+                      flex: "1 1 10rem",
                       minWidth: 0,
                       fontWeight: "600",
                       fontSize: "17px",
@@ -645,7 +647,7 @@ export default function Settings({ model }) {
                       fontSize: "15px",
                       color: "#666",
                       fontWeight: "600",
-                      flexShrink: 0,
+                      flexShrink: 1,
                     }}
                   >
                     {item.frequency === "weekly"
