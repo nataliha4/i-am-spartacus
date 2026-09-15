@@ -578,8 +578,8 @@ export default () => {
                     0,
                   );
                   const done =
-                    items.find((item) => item.dataset.label === "Done")
-                      ?.parsed.y || 0;
+                    items.find((item) => item.dataset.label === "Done")?.parsed
+                      .y || 0;
                   const percent =
                     total === 0 ? 0 : Math.round((done / total) * 100);
                   return `Completion: ${percent}%`;
