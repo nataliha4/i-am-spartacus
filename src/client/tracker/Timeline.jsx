@@ -406,48 +406,52 @@ export default function Timeline({ model }) {
                         />
                       </>
                     )}
-                    {item.category === "fasting" && (
-                      <>
-                        <label
-                          style={{
-                            fontSize: "13px",
-                            color: "#666",
-                          }}
-                        >
-                          Start
-                        </label>
-                        <input
-                          type="time"
-                          value={editData.start}
-                          onChange={(e) =>
-                            setEditData({
-                              ...editData,
-                              start: e.target.value,
-                            })
-                          }
-                          style={styles.editInput}
-                        />
-                        <label
-                          style={{
-                            fontSize: "13px",
-                            color: "#666",
-                          }}
-                        >
-                          End
-                        </label>
-                        <input
-                          type="time"
-                          value={editData.end}
-                          onChange={(e) =>
-                            setEditData({
-                              ...editData,
-                              end: e.target.value,
-                            })
-                          }
-                          style={styles.editInput}
-                        />
-                      </>
-                    )}
+                    {item.category === "fasting" &&
+                      (item.id.startsWith("fast-end") ? (
+                        <>
+                          <label
+                            style={{
+                              fontSize: "13px",
+                              color: "#666",
+                            }}
+                          >
+                            End
+                          </label>
+                          <input
+                            type="time"
+                            value={editData.end}
+                            onChange={(e) =>
+                              setEditData({
+                                ...editData,
+                                end: e.target.value,
+                              })
+                            }
+                            style={styles.editInput}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <label
+                            style={{
+                              fontSize: "13px",
+                              color: "#666",
+                            }}
+                          >
+                            Start
+                          </label>
+                          <input
+                            type="time"
+                            value={editData.start}
+                            onChange={(e) =>
+                              setEditData({
+                                ...editData,
+                                start: e.target.value,
+                              })
+                            }
+                            style={styles.editInput}
+                          />
+                        </>
+                      ))}
                     {item.category === "medical" && (
                       <>
                         <label
