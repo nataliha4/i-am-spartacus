@@ -452,7 +452,12 @@ for (const schedule of [
     expect(
       snapshot.rows.find((row: { kind: string }) => row.kind === "schedule")
         .data,
-    ).toEqual({ name: `${name} edited`, time: "00:00", frequency: "daily" });
+    ).toEqual({
+      name: `${name} edited`,
+      time: "00:00",
+      frequency: "daily",
+      createdDate: new Date().toISOString().slice(0, 10),
+    });
     expect(
       snapshot.rows.filter((row: { kind: string }) => row.kind === "entry"),
     ).toHaveLength(2);
