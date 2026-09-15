@@ -14,6 +14,9 @@ export const styles = {
     marginBottom: "2.5rem",
     borderBottom: "2px solid #e0e0e0",
     paddingBottom: "2rem",
+    backgroundColor: "#6b46c1",
+    borderRadius: "12px",
+    paddingTop: "2rem",
   },
   title: {
     fontSize: "30px",
@@ -21,11 +24,12 @@ export const styles = {
     margin: 0,
     letterSpacing: "-0.5px",
     textAlign: "center",
+    color: "#ffffff",
   },
   subtitle: {
     fontSize: "15px",
     fontWeight: "500",
-    color: "#666",
+    color: "#e9e1fa",
     margin: 0,
     marginTop: "0.5rem",
     textAlign: "center",
