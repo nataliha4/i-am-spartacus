@@ -265,7 +265,7 @@ export default () => {
   const [historyDateTo, setHistoryDateTo] = useState(() =>
     localDate(Date.now(), appSettings.timezone),
   );
-  const [historyView, setHistoryView] = useState("list");
+  const [historyView, setHistoryView] = useState("charts");
   const [correlationWindowHours, setCorrelationWindowHours] = useState(6);
   const [minSeverityFilter, setMinSeverityFilter] = useState(1);
   const [Chart, setChart] = useState(null);
