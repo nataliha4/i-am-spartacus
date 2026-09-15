@@ -499,6 +499,7 @@ export default () => {
       )
       .sort();
     const labels = [];
+    const dateKeys = [];
     const doneCounts = [];
     const failedCounts = [];
     const pendingCounts = [];
@@ -527,6 +528,7 @@ export default () => {
           day: "numeric",
         }),
       );
+      dateKeys.push(d);
       doneCounts.push(doneCount);
       failedCounts.push(failedCount);
       pendingCounts.push(planKeys.length - doneCount - failedCount);
@@ -563,6 +565,18 @@ export default () => {
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          onClick: (_evt, elements) => {
+            if (elements.length === 0) return;
+            const date = dateKeys[elements[0].index];
+            if (!date) return;
+            setCurrentDate(date);
+            setActiveTab("plan");
+          },
+          onHover: (evt, elements) => {
+            evt.native.target.style.cursor = elements.length
+              ? "pointer"
+              : "default";
+          },
           plugins: {
             legend: {
               display: true,

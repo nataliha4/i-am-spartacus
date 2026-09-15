@@ -1,9 +1,13 @@
+import { localDate } from "../../shared/model";
 export default function Plan({ model }) {
   const {
     styles,
     recurringSupps,
     isSuppScheduledToday,
     recurringGym,
+    currentDate,
+    appSettings,
+    parseLocalDate,
     isRecurringDone,
     isRecurringGymDone,
     isRecurringFailed,
@@ -48,9 +52,14 @@ export default function Plan({ model }) {
             })),
         ].sort((a, b) => (a.item.time || "").localeCompare(b.item.time || ""));
         if (planItems.length === 0) return null;
+        const isToday =
+          currentDate === localDate(Date.now(), appSettings.timezone);
+        const title = isToday
+          ? "🎯 Plan for Today"
+          : `🎯 Plan for ${parseLocalDate(currentDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
         return (
           <div style={styles.card}>
-            <div style={styles.cardTitle}>🎯 Plan for Today</div>
+            <div style={styles.cardTitle}>{title}</div>
             <div>
               {planItems.map(({ item, type }) => {
                 const isSupp = type === "supplement";
