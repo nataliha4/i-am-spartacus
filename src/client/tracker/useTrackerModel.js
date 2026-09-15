@@ -499,7 +499,9 @@ export default () => {
       )
       .sort();
     const labels = [];
-    const dataPoints = [];
+    const doneCounts = [];
+    const failedCounts = [];
+    const pendingCounts = [];
     dates.forEach((d) => {
       const dayData = entries[d] || {};
       const planKeys = [
@@ -512,8 +514,12 @@ export default () => {
       ];
       if (planKeys.length === 0) return;
       const dismissed = dayData.dueDismissed || [];
+      const failed = dayData.failedRecurring || [];
       const doneCount = planKeys.filter((key) =>
         dismissed.includes(key),
+      ).length;
+      const failedCount = planKeys.filter(
+        (key) => !dismissed.includes(key) && failed.includes(key),
       ).length;
       labels.push(
         parseLocalDate(d).toLocaleDateString("en-US", {
@@ -521,36 +527,36 @@ export default () => {
           day: "numeric",
         }),
       );
-      dataPoints.push(Math.round((doneCount / planKeys.length) * 100));
+      doneCounts.push(doneCount);
+      failedCounts.push(failedCount);
+      pendingCounts.push(planKeys.length - doneCount - failedCount);
     });
     if (planCompletionChartInstanceRef.current) {
       planCompletionChartInstanceRef.current.destroy();
       planCompletionChartInstanceRef.current = null;
     }
-    if (dataPoints.length === 0) return;
-    const barColors = dataPoints.map((p) =>
-      p >= 100 ? "#27ae60" : p >= 50 ? "#f39c12" : "#e74c3c",
-    );
+    if (labels.length === 0) return;
     planCompletionChartInstanceRef.current = new Chart(
       planCompletionChartRef.current,
       {
+        type: "bar",
         data: {
           labels,
           datasets: [
             {
-              type: "bar",
-              label: "Plan Completion",
-              data: dataPoints,
-              backgroundColor: barColors,
+              label: "Done",
+              data: doneCounts,
+              backgroundColor: "#27ae60",
             },
             {
-              type: "line",
-              label: "Goal (100%)",
-              data: labels.map(() => 100),
-              borderColor: "#333",
-              borderDash: [6, 6],
-              pointRadius: 0,
-              fill: false,
+              label: "Failed",
+              data: failedCounts,
+              backgroundColor: "#e74c3c",
+            },
+            {
+              label: "Pending",
+              data: pendingCounts,
+              backgroundColor: "#ccc",
             },
           ],
         },
@@ -562,16 +568,35 @@ export default () => {
               display: true,
               position: "bottom",
             },
+            tooltip: {
+              mode: "index",
+              intersect: false,
+              callbacks: {
+                footer: (items) => {
+                  const total = items.reduce(
+                    (sum, item) => sum + item.parsed.y,
+                    0,
+                  );
+                  const done =
+                    items.find((item) => item.dataset.label === "Done")
+                      ?.parsed.y || 0;
+                  const percent =
+                    total === 0 ? 0 : Math.round((done / total) * 100);
+                  return `Completion: ${percent}%`;
+                },
+              },
+            },
           },
           scales: {
             y: {
-              min: 0,
-              max: 100,
+              stacked: true,
+              beginAtZero: true,
               ticks: {
-                callback: (v) => `${v}%`,
+                stepSize: 1,
               },
             },
             x: {
+              stacked: true,
               ticks: {
                 autoSkip: true,
                 maxTicksLimit: 10,
