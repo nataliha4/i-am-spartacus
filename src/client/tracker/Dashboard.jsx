@@ -800,6 +800,106 @@ export default function Dashboard({ model }) {
       </div>
 
       {(() => {
+        const planItems = [
+          ...Object.values(recurringSupps)
+            .filter(isSuppScheduledToday)
+            .map((s) => ({
+              item: s,
+              type: "supplement",
+            })),
+          ...Object.values(recurringGym)
+            .filter(isSuppScheduledToday)
+            .map((g) => ({
+              item: g,
+              type: "gym",
+            })),
+        ];
+        if (planItems.length === 0) return null;
+        let doneCount = 0;
+        let failedCount = 0;
+        planItems.forEach(({ item, type }) => {
+          const isSupp = type === "supplement";
+          const done = isSupp
+            ? isRecurringDone(item)
+            : isRecurringGymDone(item);
+          if (done) {
+            doneCount++;
+            return;
+          }
+          const failedKey = isSupp
+            ? `recurring-${item.id}`
+            : `recurring-gym-${item.id}`;
+          if (isRecurringFailed(failedKey)) failedCount++;
+        });
+        const total = planItems.length;
+        const pendingCount = total - doneCount - failedCount;
+        const percent = Math.round((doneCount / total) * 100);
+        const percentColor =
+          percent === 100 ? "#27ae60" : percent >= 50 ? "#f39c12" : "#e74c3c";
+        return (
+          <div style={styles.card}>
+            <div style={styles.cardTitle}>🎯 Today's Plan Completion</div>
+            <div
+              style={{
+                textAlign: "center",
+                fontSize: "36px",
+                fontWeight: "700",
+                color: percentColor,
+              }}
+            >
+              {percent}%
+            </div>
+            <div
+              style={{
+                textAlign: "center",
+                fontSize: "13px",
+                color: "#666",
+                marginTop: "0.2rem",
+                marginBottom: "0.75rem",
+              }}
+            >
+              {doneCount} done · {failedCount} failed · {pendingCount} pending
+            </div>
+            <div
+              style={{
+                display: "flex",
+                width: "100%",
+                height: "10px",
+                borderRadius: "999px",
+                overflow: "hidden",
+                backgroundColor: "#f0f0f0",
+              }}
+            >
+              {doneCount > 0 && (
+                <div
+                  style={{
+                    width: `${(doneCount / total) * 100}%`,
+                    backgroundColor: "#27ae60",
+                  }}
+                />
+              )}
+              {failedCount > 0 && (
+                <div
+                  style={{
+                    width: `${(failedCount / total) * 100}%`,
+                    backgroundColor: "#e74c3c",
+                  }}
+                />
+              )}
+              {pendingCount > 0 && (
+                <div
+                  style={{
+                    width: `${(pendingCount / total) * 100}%`,
+                    backgroundColor: "#ccc",
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {(() => {
         const now = new Date();
         const nowTotalMin = now.getHours() * 60 + now.getMinutes();
         const allPendingItems = [
