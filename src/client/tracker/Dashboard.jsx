@@ -46,6 +46,7 @@ export default function Dashboard({ model }) {
     setConfirmNotes,
     markRecurringFailed,
     renderAddEntryCard,
+    setActiveTab,
   } = model;
   return (
     <div style={styles.content}>
@@ -837,7 +838,13 @@ export default function Dashboard({ model }) {
         const percentColor =
           percent === 100 ? "#27ae60" : percent >= 50 ? "#f39c12" : "#e74c3c";
         return (
-          <div style={styles.card}>
+          <div
+            onClick={() => setActiveTab("plan")}
+            style={{
+              ...styles.card,
+              cursor: "pointer",
+            }}
+          >
             <div style={styles.cardTitle}>🎯 Today's Plan Completion</div>
             <div
               style={{
