@@ -1,4 +1,4 @@
-import { localDate } from "../../shared/model";
+import { localDate, scheduledOn } from "../../shared/model";
 export default function History({ model }) {
   const {
     styles,
@@ -20,6 +20,9 @@ export default function History({ model }) {
     formatTime12h,
     weightChartRef,
     fastingChartRef,
+    planCompletionChartRef,
+    recurringSupps,
+    recurringGym,
     correlationWindowHours,
     setCorrelationWindowHours,
     minSeverityFilter,
@@ -437,6 +440,39 @@ export default function History({ model }) {
                 }}
               >
                 <canvas ref={fastingChartRef}></canvas>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {historyView === "charts" && (
+        <div style={styles.card}>
+          <div style={styles.cardTitle}>🎯 Plan Completion</div>
+          {(() => {
+            const hasData = Object.keys(entries).some((d) => {
+              if (historyDateFrom && d < historyDateFrom) return false;
+              if (historyDateTo && d > historyDateTo) return false;
+              const planned =
+                Object.values(recurringSupps).some((s) => scheduledOn(s, d)) ||
+                Object.values(recurringGym).some((g) => scheduledOn(g, d));
+              return planned;
+            });
+            if (!hasData) {
+              return (
+                <div style={styles.emptyState}>
+                  No planned supplements or gym items in this date range yet.
+                </div>
+              );
+            }
+            return (
+              <div
+                style={{
+                  position: "relative",
+                  height: "280px",
+                }}
+              >
+                <canvas ref={planCompletionChartRef}></canvas>
               </div>
             );
           })()}

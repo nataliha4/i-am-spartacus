@@ -284,6 +284,8 @@ export default () => {
   const weightChartInstanceRef = useRef(null);
   const fastingChartRef = useRef(null);
   const fastingChartInstanceRef = useRef(null);
+  const planCompletionChartRef = useRef(null);
+  const planCompletionChartInstanceRef = useRef(null);
   useEffect(() => {
     if (!Chart || activeTab !== "history" || historyView !== "charts") return;
     if (!weightChartRef.current) return;
@@ -485,6 +487,117 @@ export default () => {
     historyDateFrom,
     historyDateTo,
     appSettings.fastingGoalHours,
+  ]);
+  useEffect(() => {
+    if (!Chart || activeTab !== "history" || historyView !== "charts") return;
+    if (!planCompletionChartRef.current) return;
+    const dates = Object.keys(entries)
+      .filter(
+        (d) =>
+          (!historyDateFrom || d >= historyDateFrom) &&
+          (!historyDateTo || d <= historyDateTo),
+      )
+      .sort();
+    const labels = [];
+    const dataPoints = [];
+    dates.forEach((d) => {
+      const dayData = entries[d] || {};
+      const planKeys = [
+        ...Object.values(recurringSupps)
+          .filter((s) => scheduledOn(s, d))
+          .map((s) => `recurring-${s.id}`),
+        ...Object.values(recurringGym)
+          .filter((g) => scheduledOn(g, d))
+          .map((g) => `recurring-gym-${g.id}`),
+      ];
+      if (planKeys.length === 0) return;
+      const dismissed = dayData.dueDismissed || [];
+      const doneCount = planKeys.filter((key) =>
+        dismissed.includes(key),
+      ).length;
+      labels.push(
+        parseLocalDate(d).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+      );
+      dataPoints.push(Math.round((doneCount / planKeys.length) * 100));
+    });
+    if (planCompletionChartInstanceRef.current) {
+      planCompletionChartInstanceRef.current.destroy();
+      planCompletionChartInstanceRef.current = null;
+    }
+    if (dataPoints.length === 0) return;
+    const barColors = dataPoints.map((p) =>
+      p >= 100 ? "#27ae60" : p >= 50 ? "#f39c12" : "#e74c3c",
+    );
+    planCompletionChartInstanceRef.current = new Chart(
+      planCompletionChartRef.current,
+      {
+        data: {
+          labels,
+          datasets: [
+            {
+              type: "bar",
+              label: "Plan Completion",
+              data: dataPoints,
+              backgroundColor: barColors,
+            },
+            {
+              type: "line",
+              label: "Goal (100%)",
+              data: labels.map(() => 100),
+              borderColor: "#333",
+              borderDash: [6, 6],
+              pointRadius: 0,
+              fill: false,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true,
+              position: "bottom",
+            },
+          },
+          scales: {
+            y: {
+              min: 0,
+              max: 100,
+              ticks: {
+                callback: (v) => `${v}%`,
+              },
+            },
+            x: {
+              ticks: {
+                autoSkip: true,
+                maxTicksLimit: 10,
+                maxRotation: 45,
+                minRotation: 0,
+              },
+            },
+          },
+        },
+      },
+    );
+    return () => {
+      if (planCompletionChartInstanceRef.current) {
+        planCompletionChartInstanceRef.current.destroy();
+        planCompletionChartInstanceRef.current = null;
+      }
+    };
+  }, [
+    Chart,
+    activeTab,
+    historyView,
+    entries,
+    historyDateFrom,
+    historyDateTo,
+    recurringSupps,
+    recurringGym,
   ]);
   const [editActiveFastTime, setEditActiveFastTime] = useState("");
   const [editingCategory, setEditingCategory] = useState(null);
@@ -983,6 +1096,8 @@ export default () => {
     weightChartInstanceRef,
     fastingChartRef,
     fastingChartInstanceRef,
+    planCompletionChartRef,
+    planCompletionChartInstanceRef,
     editActiveFastTime,
     setEditActiveFastTime,
     setActiveFastDraft,
