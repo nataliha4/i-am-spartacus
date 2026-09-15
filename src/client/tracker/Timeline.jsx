@@ -652,7 +652,7 @@ export default function Timeline({ model }) {
                       return;
                     }
                     if (!item.category || !item.entry) return;
-                    startEdit(item.category, item.entry);
+                    startEdit(item.category, item.entry, item.sourceDate);
                     setTimelineEditingKey(item.id);
                   }}
                 >

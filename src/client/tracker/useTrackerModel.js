@@ -491,11 +491,11 @@ export default () => {
   const [editData, setEditData] = useState({});
   const [editDate, setEditDate] = useState("");
   const [editSourceDate, setEditSourceDate] = useState("");
-  const startEdit = (category, entry) => {
+  const startEdit = (category, entry, sourceDate = dateKey) => {
     setEditingCategory(category);
     setEditingId(entry.id);
     setEditDate(dateKey);
-    setEditSourceDate(dateKey);
+    setEditSourceDate(sourceDate);
     setEditData({
       ...entry,
     });
@@ -875,8 +875,9 @@ export default () => {
           icon: "⏳",
           label: "✅ Fast started",
           detail: `Ended ${endDate} · ${fastHours(entry.startTimestampMs, entry.endTimestampMs).toFixed(1)}h total`,
-          category: null,
-          entry: null,
+          category: "fasting",
+          entry: entry,
+          sourceDate: endDate,
         });
       });
     });
