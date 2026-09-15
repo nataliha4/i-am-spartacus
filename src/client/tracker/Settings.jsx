@@ -31,6 +31,7 @@ export default function Settings({ model }) {
     showAddRecurringGym,
     setShowAddRecurringGym,
     setRecurringGym,
+    getTodayDateKey,
   } = model;
   const [appSettings, setDraftSettings] = useState(savedSettings);
   const [dirty, setDirty] = useState(false);
@@ -444,6 +445,7 @@ export default function Settings({ model }) {
                             formData.recurringFrequency === "weekly"
                               ? formData.recurringDayOfWeek
                               : undefined,
+                          createdDate: getTodayDateKey(),
                         },
                       };
                     }))
@@ -768,6 +770,7 @@ export default function Settings({ model }) {
                             formData.recurringGymFrequency === "weekly"
                               ? formData.recurringGymDayOfWeek
                               : undefined,
+                          createdDate: getTodayDateKey(),
                         },
                       };
                     }))

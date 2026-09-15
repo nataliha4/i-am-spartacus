@@ -93,6 +93,7 @@ export default () => {
     return `${y}-${m}-${d}`;
   };
   const getCurrentTimeHHMM = () => localTime(Date.now(), appSettings.timezone);
+  const getTodayDateKey = () => localDate(Date.now(), appSettings.timezone);
   const startFast = startFastRemote;
   const stopFast = stopFastRemote;
   const saveActiveFastStartTime = async (newTime) => {
@@ -1089,6 +1090,7 @@ export default () => {
     parseLocalDate,
     formatDateLocal,
     getCurrentTimeHHMM,
+    getTodayDateKey,
     startFast,
     stopFast,
     saveActiveFastStartTime,

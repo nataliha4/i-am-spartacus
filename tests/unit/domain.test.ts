@@ -19,6 +19,21 @@ describe("calendar and tracking behavior", () => {
       scheduledOn({ frequency: "weekly", dayOfWeek: 0 }, "2026-09-12"),
     ).toBe(false);
   });
+  test("a schedule's createdDate excludes dates before it existed, but not schedules without one", () => {
+    expect(
+      scheduledOn(
+        { frequency: "daily", createdDate: "2026-09-10" },
+        "2026-09-09",
+      ),
+    ).toBe(false);
+    expect(
+      scheduledOn(
+        { frequency: "daily", createdDate: "2026-09-10" },
+        "2026-09-10",
+      ),
+    ).toBe(true);
+    expect(scheduledOn({ frequency: "daily" }, "2020-01-01")).toBe(true);
+  });
   test("fasts preserve multi-day duration and DST elapsed time", () => {
     expect(
       fastHours(

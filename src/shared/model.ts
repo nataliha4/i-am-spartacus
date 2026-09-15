@@ -120,6 +120,9 @@ export const scheduleSchema = z
     time: timeSchema,
     frequency: z.enum(["daily", "weekly"]),
     dayOfWeek: z.coerce.number().int().min(0).max(6).optional(),
+    // Absent on schedules created before this field existed — treated as
+    // having no creation-date floor, so they still apply to all past dates.
+    createdDate: dateSchema.optional(),
   })
   .strict()
   .refine(
@@ -267,9 +270,14 @@ export function fastHours(start: number, end: number): number {
   return Math.max(0, end - start) / 3600000;
 }
 export function scheduledOn(
-  schedule: { frequency?: string; dayOfWeek?: string | number },
+  schedule: {
+    frequency?: string;
+    dayOfWeek?: string | number;
+    createdDate?: string;
+  },
   date: string,
 ): boolean {
+  if (schedule.createdDate && date < schedule.createdDate) return false;
   return (
     schedule.frequency !== "weekly" ||
     Temporal.PlainDate.from(date).dayOfWeek % 7 === Number(schedule.dayOfWeek)
