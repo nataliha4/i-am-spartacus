@@ -816,6 +816,7 @@ export default () => {
             editRecurringData.frequency === "weekly"
               ? editRecurringData.dayOfWeek
               : undefined,
+          createdDate: editRecurringData.createdDate || undefined,
         },
       })))
     )
@@ -881,6 +882,7 @@ export default () => {
             editGymRecurringData.frequency === "weekly"
               ? editGymRecurringData.dayOfWeek
               : undefined,
+          createdDate: editGymRecurringData.createdDate || undefined,
         },
       })))
     )

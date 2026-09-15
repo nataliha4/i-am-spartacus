@@ -259,6 +259,25 @@ export default function Settings({ model }) {
                       }
                       style={styles.editInput}
                     />
+                    <label
+                      style={{
+                        fontSize: "13px",
+                        color: "#666",
+                      }}
+                    >
+                      Created on (leave blank if it's always applied)
+                    </label>
+                    <input
+                      type="date"
+                      value={editRecurringData.createdDate || ""}
+                      onChange={(e) =>
+                        setEditRecurringData({
+                          ...editRecurringData,
+                          createdDate: e.target.value || undefined,
+                        })
+                      }
+                      style={styles.editInput}
+                    />
                     <div
                       style={{
                         display: "flex",
@@ -580,6 +599,25 @@ export default function Settings({ model }) {
                         setEditGymRecurringData({
                           ...editGymRecurringData,
                           time: e.target.value,
+                        })
+                      }
+                      style={styles.editInput}
+                    />
+                    <label
+                      style={{
+                        fontSize: "13px",
+                        color: "#666",
+                      }}
+                    >
+                      Created on (leave blank if it's always applied)
+                    </label>
+                    <input
+                      type="date"
+                      value={editGymRecurringData.createdDate || ""}
+                      onChange={(e) =>
+                        setEditGymRecurringData({
+                          ...editGymRecurringData,
+                          createdDate: e.target.value || undefined,
                         })
                       }
                       style={styles.editInput}
