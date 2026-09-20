@@ -1,3 +1,5 @@
+import { instant, localDate, previousDate } from "../../src/shared/model";
+
 export const legacyFixture = {
   format: "spartacus-legacy",
   version: 1,
@@ -61,3 +63,21 @@ export const legacyFixture = {
     },
   },
 };
+
+// The fixture's 2026-09-11/12 days moved to the two days before today, for
+// tests that go through date-windowed UI (e.g. the 7-day Charts range).
+export function relativeLegacyFixture(timezone: string) {
+  const day = previousDate(localDate(Date.now(), timezone));
+  const dayBefore = previousDate(day);
+  const fixture = JSON.parse(
+    JSON.stringify(legacyFixture)
+      .replaceAll("2026-09-12", day)
+      .replaceAll("2026-09-11", dayBefore),
+  ) as typeof legacyFixture;
+  // Keep the weekly supplement on the (moved) day and the fast start at 16:00.
+  fixture.data.recurringSupps["3"].dayOfWeek = String(
+    new Date(`${day}T00:00:00Z`).getUTCDay(),
+  );
+  fixture.data.activeFast.startTimestampMs = instant(day, "16:00", timezone);
+  return fixture;
+}

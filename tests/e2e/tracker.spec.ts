@@ -3,7 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { connect } from "../../src/db/connection";
 import { createOperatorAuth } from "../../src/server/operator-auth";
-import { legacyFixture } from "../fixtures/legacy";
+import { relativeLegacyFixture } from "../fixtures/legacy";
 
 const url = process.env.TEST_DATABASE_URL;
 if (!url || !new URL(url).pathname.endsWith("_test"))
@@ -60,7 +60,9 @@ test("familiar tracker: login, import, every screen, confirmed save, restart and
   await page.getByLabel("Choose export JSON").setInputFiles({
     name: "legacy.json",
     mimeType: "application/json",
-    buffer: Buffer.from(JSON.stringify(legacyFixture)),
+    buffer: Buffer.from(
+      JSON.stringify(relativeLegacyFixture("America/New_York")),
+    ),
   });
   await page
     .getByRole("button", { name: "Confirm import into this account" })
