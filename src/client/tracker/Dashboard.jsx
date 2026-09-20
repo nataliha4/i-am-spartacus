@@ -48,8 +48,11 @@ export default function Dashboard({ model }) {
     renderAddEntryCard,
     setActiveTab,
   } = model;
+  const hasWeightToday = !!(todayData.weight && todayData.weight.length > 0);
   return (
-    <div style={styles.content}>
+    <div
+      style={{ ...styles.content, display: "flex", flexDirection: "column" }}
+    >
       <div style={styles.card}>
         <div style={styles.cardTitle}>⏳ Fasting</div>
         <div
@@ -528,14 +531,13 @@ export default function Dashboard({ model }) {
         </div>
       </div>
 
-      <div style={styles.card}>
+      <div style={{ ...styles.card, order: hasWeightToday ? 0 : -1 }}>
         <div style={styles.cardTitle}>⚖️ Weight</div>
         {(() => {
           const target = appSettings.targetWeight
             ? parseFloat(appSettings.targetWeight)
             : null;
-          const hasToday = todayData.weight && todayData.weight.length > 0;
-          if (hasToday) {
+          if (hasWeightToday) {
             const latest = latestWeight(todayData.weight);
             const current = parseFloat(latest.weight);
             const diff = target !== null ? current - target : null;
