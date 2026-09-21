@@ -173,8 +173,8 @@ export default function AddEntryCard({ model }) {
                 />
                 {activeFast && (
                   <div style={styles.entryMeta}>
-                    ⏳ Currently fasting for {getElapsedFastLabel()} — this
-                    will be added to your notes.
+                    ⏳ Currently fasting for {getElapsedFastLabel()} — this will
+                    be added to your notes.
                   </div>
                 )}
               </div>
