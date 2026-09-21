@@ -10,6 +10,8 @@ export default function AddEntryCard({ model }) {
     setFormData,
     addEntry,
     getCurrentTimeHHMM,
+    activeFast,
+    getElapsedFastLabel,
   } = model;
   const isViewingToday =
     currentDate === localDate(Date.now(), appSettings.timezone);
@@ -169,6 +171,12 @@ export default function AddEntryCard({ model }) {
                   }
                   style={styles.textarea}
                 />
+                {activeFast && (
+                  <div style={styles.entryMeta}>
+                    ⏳ Currently fasting for {getElapsedFastLabel()} — this
+                    will be added to your notes.
+                  </div>
+                )}
               </div>
               <div
                 style={{
@@ -180,11 +188,19 @@ export default function AddEntryCard({ model }) {
                 <button
                   onClick={async () => {
                     if (formData.symptom) {
+                      const fastingNote = activeFast
+                        ? `Fasting for ${getElapsedFastLabel()}`
+                        : "";
+                      const notes = fastingNote
+                        ? formData.symptomNotes
+                          ? `${formData.symptomNotes}\n${fastingNote}`
+                          : fastingNote
+                        : formData.symptomNotes;
                       if (
                         !(await addEntry("symptoms", {
                           symptom: formData.symptom,
                           level: formData.symptomLevel,
-                          notes: formData.symptomNotes,
+                          notes,
                           time: formData.symptomTime || getCurrentTimeHHMM(),
                         }))
                       )
