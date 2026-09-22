@@ -316,6 +316,8 @@ test("weight forms, timezone and fasting actions persist schema-valid data", asy
       await page.getByText("+ Log another entry", { exact: true }).click();
     await page.getByPlaceholder("e.g., 75.5").fill(weight);
     await page.getByRole("button", { name: "Log", exact: true }).click();
+    // Logging a weight lands on the Charts so the new entry is seen in context.
+    await expect(page.locator("canvas").first()).toBeVisible();
     await page.getByRole("button", { name: "Dashboard", exact: true }).click();
   }
   await page.getByRole("button", { name: "Day Timeline", exact: true }).click();

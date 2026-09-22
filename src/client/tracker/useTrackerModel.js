@@ -235,7 +235,10 @@ export default () => {
       recurringGymFrequency: "daily",
       recurringGymDayOfWeek: "1",
     });
-    setActiveTab("timeline");
+    if (category === "weight") {
+      setHistoryView("charts");
+      setActiveTab("history");
+    } else setActiveTab("timeline");
     return true;
   };
   const deleteEntry = async (category, id, revision) => {
