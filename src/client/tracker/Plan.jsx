@@ -196,7 +196,7 @@ export default function Plan({ model }) {
                             marginLeft: "auto",
                           }}
                         >
-                          Mark as Failed
+                          Skip
                         </span>
                       </div>
                     </div>
@@ -328,7 +328,7 @@ export default function Plan({ model }) {
                           flexShrink: 0,
                         }}
                       >
-                        Failed
+                        Skipped
                       </div>
                     </div>
                   );

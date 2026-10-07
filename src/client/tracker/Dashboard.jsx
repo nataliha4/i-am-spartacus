@@ -47,8 +47,13 @@ export default function Dashboard({ model }) {
     markRecurringFailed,
     renderAddEntryCard,
     setActiveTab,
+    isWeightFailed,
+    markWeightFailed,
+    clearWeightFailed,
   } = model;
   const hasWeightToday = !!(todayData.weight && todayData.weight.length > 0);
+  // A skipped weigh-in stops pinning the Weight card to the top of the day.
+  const weightFailed = !hasWeightToday && isWeightFailed();
   return (
     <div
       style={{ ...styles.content, display: "flex", flexDirection: "column" }}
@@ -531,7 +536,12 @@ export default function Dashboard({ model }) {
         </div>
       </div>
 
-      <div style={{ ...styles.card, order: hasWeightToday ? 0 : -1 }}>
+      <div
+        style={{
+          ...styles.card,
+          order: hasWeightToday || weightFailed ? 0 : -1,
+        }}
+      >
         <div style={styles.cardTitle}>⚖️ Weight</div>
         {(() => {
           const target = appSettings.targetWeight
@@ -716,6 +726,64 @@ export default function Dashboard({ model }) {
               </>
             );
           }
+          if (weightFailed) {
+            return (
+              <div
+                onClick={async () => await clearWeightFailed()}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                  padding: "1rem 1.25rem",
+                  backgroundColor: "#fdecea",
+                  border: "2px solid #e74c3c",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                }}
+              >
+                <div
+                  style={{
+                    width: "28px",
+                    height: "28px",
+                    minWidth: "28px",
+                    borderRadius: "50%",
+                    border: "2px solid #e74c3c",
+                    backgroundColor: "#e74c3c",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#fff",
+                    fontSize: "16px",
+                    fontWeight: "700",
+                  }}
+                >
+                  ✕
+                </div>
+                <div
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    fontWeight: "600",
+                    fontSize: "17px",
+                    color: "#c0392b",
+                    textDecoration: "line-through",
+                  }}
+                >
+                  Today's weigh-in
+                </div>
+                <div
+                  style={{
+                    fontSize: "15px",
+                    color: "#c0392b",
+                    fontWeight: "600",
+                    flexShrink: 0,
+                  }}
+                >
+                  Skipped
+                </div>
+              </div>
+            );
+          }
           const recent = getMostRecentWeight();
           return (
             <>
@@ -797,6 +865,25 @@ export default function Dashboard({ model }) {
                   Target: {target} kg
                 </div>
               )}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  marginTop: "0.75rem",
+                }}
+              >
+                <span
+                  onClick={async () => await markWeightFailed()}
+                  style={{
+                    color: "#e74c3c",
+                    fontWeight: "700",
+                    fontSize: "15px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Skip
+                </span>
+              </div>
             </>
           );
         })()}
@@ -867,7 +954,7 @@ export default function Dashboard({ model }) {
                 marginBottom: "0.75rem",
               }}
             >
-              {doneCount} done · {failedCount} failed · {pendingCount} pending
+              {doneCount} done · {failedCount} skipped · {pendingCount} pending
             </div>
             <div
               style={{
@@ -941,7 +1028,7 @@ export default function Dashboard({ model }) {
           .sort((a, b) => (a.item.time || "").localeCompare(b.item.time || ""));
         if (allPendingItems.length === 0) return null;
 
-        // Only show the nearest-scheduled item(s) — once marked done/failed, the next one surfaces automatically
+        // Only show the nearest-scheduled item(s) — once marked done/skipped, the next one surfaces automatically
         const nearestTime = allPendingItems[0].item.time;
         const upcomingItems = allPendingItems.filter(
           ({ item }) => item.time === nearestTime,
@@ -1086,7 +1173,7 @@ export default function Dashboard({ model }) {
                           marginLeft: "auto",
                         }}
                       >
-                        Mark as Failed
+                        Skip
                       </span>
                     </div>
                   </div>

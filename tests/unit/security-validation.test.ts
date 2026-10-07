@@ -6,6 +6,7 @@ import {
   formatIssues,
   settingsSchema,
   validateRow,
+  WEIGHT_CHECKLIST_KEY,
 } from "../../src/shared/model";
 import { prepareImport } from "../../src/shared/import";
 
@@ -28,6 +29,20 @@ test("checklist keys require a real UUID", () => {
   expect(() => validateRow(row)).toThrow();
   row.data.key = `recurring-gym-${crypto.randomUUID()}`;
   expect(validateRow(row).data.key).toBe(row.data.key);
+});
+
+test("checklist accepts only the exact weight marker as a non-UUID key", () => {
+  const row = {
+    id: crypto.randomUUID(),
+    kind: "checklist" as const,
+    date: "2026-09-12",
+    category: null,
+    revision: 0,
+    data: { key: WEIGHT_CHECKLIST_KEY, done: false, failed: true },
+  };
+  expect(validateRow(row).data.key).toBe("weight");
+  row.data.key = "weight-extra";
+  expect(() => validateRow(row)).toThrow();
 });
 
 test("oversized collections are rejected before their contents are validated", () => {

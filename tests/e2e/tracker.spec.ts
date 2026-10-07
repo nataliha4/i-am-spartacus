@@ -311,6 +311,15 @@ test("weight forms, timezone and fasting actions persist schema-valid data", asy
     .click();
   await expect(page.getByText("✓ Saved", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  // A skipped weigh-in can be skipped, which persists, and undone.
+  await page.getByText("Skip", { exact: true }).click();
+  const skipped = page.getByText("Today's weigh-in", { exact: true });
+  await expect(skipped).toBeVisible();
+  await expect(page.getByPlaceholder("e.g., 75.5")).toHaveCount(0);
+  await page.reload();
+  await expect(skipped).toBeVisible();
+  await skipped.click();
+  await expect(skipped).toHaveCount(0);
   for (const weight of ["70", "71"]) {
     if (weight === "71")
       await page.getByText("+ Log another entry", { exact: true }).click();
@@ -434,10 +443,10 @@ for (const schedule of [
       .getByRole("button", { name: "Plan for Today", exact: true })
       .click();
     await page.getByText(`${name} edited`, { exact: true }).click();
-    await page.getByText("Mark as Failed", { exact: true }).click();
-    await expect(page.getByText("Failed", { exact: true })).toBeVisible();
+    await page.getByText("Skip", { exact: true }).click();
+    await expect(page.getByText("Skipped", { exact: true })).toBeVisible();
     await page.getByText(`${name} edited`, { exact: true }).click();
-    await expect(page.getByText("Failed", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Skipped", { exact: true })).toHaveCount(0);
     await page.getByText(`${name} edited`, { exact: true }).click();
     await page.getByRole("button", { name: "Confirm", exact: true }).click();
     await page.getByText(`${name} edited`, { exact: true }).click();

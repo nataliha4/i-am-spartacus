@@ -16,6 +16,7 @@ import {
   fastHours,
   scheduledOn,
   dateSchema,
+  WEIGHT_CHECKLIST_KEY,
 } from "../../shared/model";
 export default () => {
   const {
@@ -555,7 +556,7 @@ export default () => {
               backgroundColor: "#27ae60",
             },
             {
-              label: "Failed",
+              label: "Skipped",
               data: failedCounts,
               backgroundColor: "#e74c3c",
             },
@@ -763,6 +764,9 @@ export default () => {
       return false;
     return true;
   };
+  const isWeightFailed = () => isRecurringFailed(WEIGHT_CHECKLIST_KEY);
+  const markWeightFailed = () => markRecurringFailed(WEIGHT_CHECKLIST_KEY);
+  const clearWeightFailed = () => clearRecurringFailed(WEIGHT_CHECKLIST_KEY);
   const isRecurringDone = (supp) => {
     const dismissed = todayData.dueDismissed || [];
     return dismissed.includes(`recurring-${supp.id}`);
@@ -1162,6 +1166,9 @@ export default () => {
     isRecurringFailed,
     markRecurringFailed,
     clearRecurringFailed,
+    isWeightFailed,
+    markWeightFailed,
+    clearWeightFailed,
     isRecurringDone,
     uncheckRecurring,
     confirmRecurringDone,

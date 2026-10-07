@@ -16,6 +16,8 @@ export const categories = [
   "medical",
   "weight",
 ] as const;
+/** Checklist key marking that today's weigh-in was skipped. */
+export const WEIGHT_CHECKLIST_KEY = "weight";
 export const dateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -213,12 +215,13 @@ export function validateRow(input: Row): Row {
             .string()
             .refine(
               (key) =>
-                /^(recurring-gym|recurring|logged)-/.test(key) &&
-                z
-                  .uuid()
-                  .safeParse(
-                    key.replace(/^(recurring-gym|recurring|logged)-/, ""),
-                  ).success,
+                key === WEIGHT_CHECKLIST_KEY ||
+                (/^(recurring-gym|recurring|logged)-/.test(key) &&
+                  z
+                    .uuid()
+                    .safeParse(
+                      key.replace(/^(recurring-gym|recurring|logged)-/, ""),
+                    ).success),
               "Checklist key must end in a UUID",
             ),
           done: z.boolean(),
