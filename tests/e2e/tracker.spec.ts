@@ -312,7 +312,7 @@ test("weight forms, timezone and fasting actions persist schema-valid data", asy
   await expect(page.getByText("✓ Saved", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Dashboard", exact: true }).click();
   // A skipped weigh-in can be skipped, which persists, and undone.
-  await page.getByText("Skip", { exact: true }).click();
+  await page.getByText("Mark as Skipped", { exact: true }).click();
   const skipped = page.getByText("Today's weigh-in", { exact: true });
   await expect(skipped).toBeVisible();
   await expect(page.getByPlaceholder("e.g., 75.5")).toHaveCount(0);
@@ -443,7 +443,7 @@ for (const schedule of [
       .getByRole("button", { name: "Plan for Today", exact: true })
       .click();
     await page.getByText(`${name} edited`, { exact: true }).click();
-    await page.getByText("Skip", { exact: true }).click();
+    await page.getByText("Mark as Skipped", { exact: true }).click();
     await expect(page.getByText("Skipped", { exact: true })).toBeVisible();
     await page.getByText(`${name} edited`, { exact: true }).click();
     await expect(page.getByText("Skipped", { exact: true })).toHaveCount(0);

@@ -196,7 +196,7 @@ export default function Plan({ model }) {
                             marginLeft: "auto",
                           }}
                         >
-                          Skip
+                          Mark as Skipped
                         </span>
                       </div>
                     </div>

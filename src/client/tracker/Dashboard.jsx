@@ -881,7 +881,7 @@ export default function Dashboard({ model }) {
                     cursor: "pointer",
                   }}
                 >
-                  Skip
+                  Mark as Skipped
                 </span>
               </div>
             </>
@@ -1173,7 +1173,7 @@ export default function Dashboard({ model }) {
                           marginLeft: "auto",
                         }}
                       >
-                        Skip
+                        Mark as Skipped
                       </span>
                     </div>
                   </div>
