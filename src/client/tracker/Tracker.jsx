@@ -143,7 +143,7 @@ export default function Tracker() {
         {[
           {
             key: "dashboard",
-            icon: "📊",
+            icon: "💪",
             name: "Dashboard",
           },
           {
@@ -153,7 +153,7 @@ export default function Tracker() {
           },
           {
             key: "history",
-            icon: "📈",
+            icon: "📊",
             name: "Stats and History",
           },
           {

@@ -39,7 +39,7 @@ export default function History({ model }) {
           marginBottom: "1.25rem",
         }}
       >
-        📈 Stats and History
+        📊 Stats and History
       </div>
       <div
         style={{
