@@ -5,9 +5,12 @@ export default function Timeline({ model }) {
     editingActiveFastStart,
     editActiveFastTime,
     setEditActiveFastTime,
+    editActiveFastDate,
+    setEditActiveFastDate,
     setActiveFastDraft,
     saveActiveFastStartTime,
     setEditingActiveFastStart,
+    getTodayDateKey,
     timelineEditingKey,
     editData,
     setEditData,
@@ -45,6 +48,21 @@ export default function Timeline({ model }) {
                         color: "#666",
                       }}
                     >
+                      Actual fast start date
+                    </label>
+                    <input
+                      type="date"
+                      value={editActiveFastDate}
+                      max={getTodayDateKey()}
+                      onChange={(e) => setEditActiveFastDate(e.target.value)}
+                      style={styles.editInput}
+                    />
+                    <label
+                      style={{
+                        fontSize: "13px",
+                        color: "#666",
+                      }}
+                    >
                       Actual fast start time
                     </label>
                     <input
@@ -64,7 +82,10 @@ export default function Timeline({ model }) {
                       <button
                         onClick={async () => {
                           if (
-                            !(await saveActiveFastStartTime(editActiveFastTime))
+                            !(await saveActiveFastStartTime(
+                              editActiveFastDate,
+                              editActiveFastTime,
+                            ))
                           )
                             return false;
                           setEditingActiveFastStart(false);
@@ -652,6 +673,7 @@ export default function Timeline({ model }) {
                     if (item.id === "fast-active-start") {
                       setActiveFastDraft({ ...activeFast });
                       setEditActiveFastTime(activeFast.startTime);
+                      setEditActiveFastDate(activeFast.startDateKey);
                       setEditingActiveFastStart(true);
                       return;
                     }

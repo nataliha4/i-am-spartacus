@@ -97,16 +97,20 @@ export default () => {
   const getTodayDateKey = () => localDate(Date.now(), appSettings.timezone);
   const startFast = startFastRemote;
   const stopFast = stopFastRemote;
-  const saveActiveFastStartTime = async (newTime) => {
-    if (!activeFastDraft || !newTime) return false;
+  const saveActiveFastStartTime = async (newDate, newTime) => {
+    if (!activeFastDraft || !newDate || !newTime) return false;
+    if (!dateSchema.safeParse(newDate).success) return false;
+    const startTimestampMs = instant(
+      newDate,
+      newTime,
+      activeFastDraft.timezone,
+    );
+    if (startTimestampMs > Date.now()) return false;
     return await setActiveFast({
       ...activeFastDraft,
       startTime: newTime,
-      startTimestampMs: instant(
-        activeFastDraft.startDateKey,
-        newTime,
-        activeFastDraft.timezone,
-      ),
+      startDateKey: newDate,
+      startTimestampMs,
     });
   };
   const getElapsedFastLabel = () => {
@@ -644,6 +648,7 @@ export default () => {
     recurringGym,
   ]);
   const [editActiveFastTime, setEditActiveFastTime] = useState("");
+  const [editActiveFastDate, setEditActiveFastDate] = useState("");
   const [editingCategory, setEditingCategory] = useState(null);
   const [editData, setEditData] = useState({});
   const [editDate, setEditDate] = useState("");
@@ -1150,6 +1155,8 @@ export default () => {
     planCompletionChartInstanceRef,
     editActiveFastTime,
     setEditActiveFastTime,
+    editActiveFastDate,
+    setEditActiveFastDate,
     setActiveFastDraft,
     editingCategory,
     setEditingCategory,
