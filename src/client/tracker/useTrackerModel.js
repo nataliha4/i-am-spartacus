@@ -660,6 +660,18 @@ export default () => {
     setEditSourceDate(sourceDate);
     setEditData({
       ...entry,
+      ...(category === "fasting"
+        ? {
+            startDate: localDate(
+              Number(entry.startTimestampMs),
+              String(entry.timezone),
+            ),
+            endDate: localDate(
+              Number(entry.endTimestampMs),
+              String(entry.timezone),
+            ),
+          }
+        : {}),
     });
   };
   const cancelEdit = () => {
@@ -667,8 +679,38 @@ export default () => {
     setEditingId(null);
     setEditData({});
   };
+  const setEditFastStart = (newDate, newTime) =>
+    setEditData((prev) => ({
+      ...prev,
+      startDate: newDate,
+      start: newTime,
+      startTimestampMs: instant(
+        newDate,
+        newTime,
+        String(prev.timezone ?? appSettings.timezone),
+      ),
+    }));
+  const setEditFastEnd = (newDate, newTime) =>
+    setEditData((prev) => ({
+      ...prev,
+      endDate: newDate,
+      end: newTime,
+      endTimestampMs: instant(
+        newDate,
+        newTime,
+        String(prev.timezone ?? appSettings.timezone),
+      ),
+    }));
   const saveEdit = async (category) => {
-    const targetDate = category === "symptoms" ? editDate : editSourceDate;
+    const targetDate =
+      category === "symptoms"
+        ? editDate
+        : category === "fasting"
+          ? localDate(
+              Number(editData.endTimestampMs),
+              String(editData.timezone ?? appSettings.timezone),
+            )
+          : editSourceDate;
     if (
       !(await setEntries((prev) => {
         const source = prev[editSourceDate] ?? {};
@@ -1164,6 +1206,8 @@ export default () => {
     setEditData,
     startEdit,
     cancelEdit,
+    setEditFastStart,
+    setEditFastEnd,
     saveEdit,
     editDate,
     setEditDate,

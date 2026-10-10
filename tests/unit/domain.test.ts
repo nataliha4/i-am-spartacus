@@ -48,6 +48,49 @@ describe("calendar and tracking behavior", () => {
       ),
     ).toBe(44);
   });
+  test("backdating a completed fast's end moves it to the new day's bucket", () => {
+    const row = validateRow({
+      id: crypto.randomUUID(),
+      kind: "fast",
+      date: "2026-09-11",
+      category: null,
+      revision: 3,
+      data: {
+        startTimestampMs: instant("2026-09-10", "23:00", "UTC"),
+        endTimestampMs: instant("2026-09-11", "07:00", "UTC"),
+        timezone: "UTC",
+      },
+    });
+    const before = project([row]);
+    const entry = before.entries["2026-09-11"].fasting[0] as Record<
+      string,
+      unknown
+    >;
+    const after = structuredClone(before);
+    after.entries["2026-09-11"].fasting = [];
+    after.entries["2026-09-12"] = {
+      ...after.entries["2026-09-12"],
+      fasting: [
+        {
+          ...entry,
+          end: "07:00",
+          endDate: "2026-09-12",
+          endTimestampMs: instant("2026-09-12", "07:00", "UTC"),
+        } as never,
+      ],
+    };
+    const operation = diffState(before, after, [row]).find(
+      (op) => op.action === "put" && op.row.kind === "fast",
+    );
+    if (operation?.action !== "put") throw new Error("expected a put");
+    expect(operation.row.id).toBe(row.id);
+    expect(operation.row.data.startTimestampMs).toBe(
+      instant("2026-09-10", "23:00", "UTC"),
+    );
+    expect(operation.row.data.endTimestampMs).toBe(
+      instant("2026-09-12", "07:00", "UTC"),
+    );
+  });
   test("empty and invalid fields are validated at the boundary", () => {
     expect(() =>
       validateRow({

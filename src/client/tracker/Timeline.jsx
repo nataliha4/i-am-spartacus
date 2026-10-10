@@ -14,6 +14,8 @@ export default function Timeline({ model }) {
     timelineEditingKey,
     editData,
     setEditData,
+    setEditFastStart,
+    setEditFastEnd,
     saveEdit,
     setTimelineEditingKey,
     cancelEdit,
@@ -429,49 +431,89 @@ export default function Timeline({ model }) {
                     )}
                     {item.category === "fasting" &&
                       (item.id.startsWith("fast-end") ? (
-                        <>
-                          <label
-                            style={{
-                              fontSize: "13px",
-                              color: "#666",
-                            }}
-                          >
-                            End
-                          </label>
-                          <input
-                            type="time"
-                            value={editData.end}
-                            onChange={(e) =>
-                              setEditData({
-                                ...editData,
-                                end: e.target.value,
-                              })
-                            }
-                            style={styles.editInput}
-                          />
-                        </>
+                        <div style={styles.twoColumnForm}>
+                          <div>
+                            <label
+                              style={{
+                                fontSize: "13px",
+                                color: "#666",
+                              }}
+                            >
+                              End date
+                            </label>
+                            <input
+                              type="date"
+                              value={editData.endDate}
+                              min={editData.startDate}
+                              max={getTodayDateKey()}
+                              onChange={(e) =>
+                                setEditFastEnd(e.target.value, editData.end)
+                              }
+                              style={styles.editInput}
+                            />
+                          </div>
+                          <div>
+                            <label
+                              style={{
+                                fontSize: "13px",
+                                color: "#666",
+                              }}
+                            >
+                              End time
+                            </label>
+                            <input
+                              type="time"
+                              value={editData.end}
+                              onChange={(e) =>
+                                setEditFastEnd(editData.endDate, e.target.value)
+                              }
+                              style={styles.editInput}
+                            />
+                          </div>
+                        </div>
                       ) : (
-                        <>
-                          <label
-                            style={{
-                              fontSize: "13px",
-                              color: "#666",
-                            }}
-                          >
-                            Start
-                          </label>
-                          <input
-                            type="time"
-                            value={editData.start}
-                            onChange={(e) =>
-                              setEditData({
-                                ...editData,
-                                start: e.target.value,
-                              })
-                            }
-                            style={styles.editInput}
-                          />
-                        </>
+                        <div style={styles.twoColumnForm}>
+                          <div>
+                            <label
+                              style={{
+                                fontSize: "13px",
+                                color: "#666",
+                              }}
+                            >
+                              Start date
+                            </label>
+                            <input
+                              type="date"
+                              value={editData.startDate}
+                              max={editData.endDate}
+                              onChange={(e) =>
+                                setEditFastStart(e.target.value, editData.start)
+                              }
+                              style={styles.editInput}
+                            />
+                          </div>
+                          <div>
+                            <label
+                              style={{
+                                fontSize: "13px",
+                                color: "#666",
+                              }}
+                            >
+                              Start time
+                            </label>
+                            <input
+                              type="time"
+                              value={editData.start}
+                              onChange={(e) =>
+                                setEditFastStart(
+                                  editData.startDate,
+                                  e.target.value,
+                                )
+                              }
+                              style={styles.editInput}
+                            />
+                          </div>
+                        </div>
                       ))}
                     {item.category === "medical" && (
                       <>
