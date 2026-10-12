@@ -12,6 +12,7 @@ export default function AddEntryCard({ model }) {
     getCurrentTimeHHMM,
     activeFast,
     getElapsedFastLabel,
+    getTimeSinceLastMealLabel,
   } = model;
   const isViewingToday =
     currentDate === localDate(Date.now(), appSettings.timezone);
@@ -177,6 +178,17 @@ export default function AddEntryCard({ model }) {
                     be added to your notes.
                   </div>
                 )}
+                {(() => {
+                  const mealLabel = getTimeSinceLastMealLabel();
+                  return (
+                    mealLabel && (
+                      <div style={styles.entryMeta}>
+                        🍎 Last meal was {mealLabel} ago — this will be added to
+                        your notes.
+                      </div>
+                    )
+                  );
+                })()}
               </div>
               <div
                 style={{
@@ -188,14 +200,16 @@ export default function AddEntryCard({ model }) {
                 <button
                   onClick={async () => {
                     if (formData.symptom) {
-                      const fastingNote = activeFast
-                        ? `Fasting for ${getElapsedFastLabel()}`
-                        : "";
-                      const notes = fastingNote
-                        ? formData.symptomNotes
-                          ? `${formData.symptomNotes}\n${fastingNote}`
-                          : fastingNote
-                        : formData.symptomNotes;
+                      const mealLabel = getTimeSinceLastMealLabel();
+                      const autoNotes = [
+                        activeFast
+                          ? `Fasting for ${getElapsedFastLabel()}`
+                          : "",
+                        mealLabel ? `${mealLabel} since last meal` : "",
+                      ].filter(Boolean);
+                      const notes = [formData.symptomNotes, ...autoNotes]
+                        .filter(Boolean)
+                        .join("\n");
                       if (
                         !(await addEntry("symptoms", {
                           symptom: formData.symptom,

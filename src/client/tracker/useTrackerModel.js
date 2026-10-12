@@ -168,6 +168,31 @@ export default () => {
     }
     return null;
   };
+  const getMostRecentFood = () => {
+    const dates = Object.keys(entries).sort().reverse();
+    for (const d of dates) {
+      const dayFoods = (entries[d] && entries[d].food) || [];
+      const withTime = dayFoods.filter(
+        (f) => f.time && f.time !== "No time set",
+      );
+      if (withTime.length > 0) {
+        const latest = withTime
+          .slice()
+          .sort((a, b) => b.time.localeCompare(a.time))[0];
+        return { entry: latest, date: d };
+      }
+    }
+    return null;
+  };
+  const getTimeSinceLastMealLabel = () => {
+    const found = getMostRecentFood();
+    if (!found) return null;
+    const ms = instant(found.date, found.entry.time, appSettings.timezone);
+    const totalMinutes = Math.max(0, Math.floor((Date.now() - ms) / 60000));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours}h ${minutes}m`;
+  };
   const buildDayItemsForHistory = historyItems;
   const getSymptomFoodContext = (from, to, hours, severity) =>
     symptomFoodContext(
@@ -1159,6 +1184,7 @@ export default () => {
     isSuppScheduledToday,
     getTodayEntries,
     getMostRecentWeight,
+    getTimeSinceLastMealLabel,
     buildDayItemsForHistory,
     getSymptomFoodContext,
     addEntry,
