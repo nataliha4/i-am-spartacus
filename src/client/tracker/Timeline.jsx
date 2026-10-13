@@ -780,6 +780,7 @@ export default function Timeline({ model }) {
                             marginTop: "0.3rem",
                             fontSize: "14px",
                             color: "#666",
+                            whiteSpace: "pre-line",
                           }}
                         >
                           {item.detail}
