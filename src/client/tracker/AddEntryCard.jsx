@@ -11,7 +11,7 @@ export default function AddEntryCard({ model }) {
     addEntry,
     getCurrentTimeHHMM,
     getElapsedFastHoursLabel,
-    getTimeSinceLastMealLabel,
+    getMealNoteLines,
   } = model;
   const isViewingToday =
     currentDate === localDate(Date.now(), appSettings.timezone);
@@ -173,17 +173,17 @@ export default function AddEntryCard({ model }) {
                 />
                 {(() => {
                   const fastLabel = getElapsedFastHoursLabel();
-                  const mealLabel = getTimeSinceLastMealLabel();
-                  const autoLine = [
+                  const autoLines = [
                     fastLabel ? `⌛ Fasting for ${fastLabel}` : "",
-                    mealLabel ? `🥕 ${mealLabel} since last meal` : "",
-                  ]
-                    .filter(Boolean)
-                    .join("  ");
+                    ...getMealNoteLines(),
+                  ].filter(Boolean);
                   return (
-                    autoLine && (
+                    autoLines.length > 0 && (
                       <div style={styles.entryMeta}>
-                        {autoLine} — this will be added to your notes.
+                        {autoLines.map((line, i) => (
+                          <div key={i}>{line}</div>
+                        ))}
+                        This will be added to your notes.
                       </div>
                     )
                   );
@@ -200,14 +200,11 @@ export default function AddEntryCard({ model }) {
                   onClick={async () => {
                     if (formData.symptom) {
                       const fastLabel = getElapsedFastHoursLabel();
-                      const mealLabel = getTimeSinceLastMealLabel();
-                      const autoLine = [
+                      const autoLines = [
                         fastLabel ? `⌛ Fasting for ${fastLabel}` : "",
-                        mealLabel ? `🥕 ${mealLabel} since last meal` : "",
-                      ]
-                        .filter(Boolean)
-                        .join("  ");
-                      const notes = [formData.symptomNotes, autoLine]
+                        ...getMealNoteLines(),
+                      ].filter(Boolean);
+                      const notes = [formData.symptomNotes, ...autoLines]
                         .filter(Boolean)
                         .join("\n");
                       if (

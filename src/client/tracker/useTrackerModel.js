@@ -195,11 +195,31 @@ export default () => {
     }
     return null;
   };
-  const getTimeSinceLastMealLabel = () => {
-    const found = getMostRecentFood();
-    if (!found) return null;
-    const ms = instant(found.date, found.entry.time, appSettings.timezone);
-    return formatHoursRounded(Date.now() - ms);
+  // One line per meal logged today (earliest first), each showing how long
+  // ago it was eaten — lets a symptom note be checked against every meal of
+  // the day, not just the most recent. Falls back to the single most recent
+  // meal from an earlier day when nothing has been logged yet today.
+  const getMealNoteLines = () => {
+    const todayFoods = (
+      (entries[dateKey] && entries[dateKey].food) ||
+      []
+    ).filter((f) => f.time && f.time !== "No time set");
+    const meals =
+      todayFoods.length > 0
+        ? todayFoods
+            .slice()
+            .sort((a, b) => a.time.localeCompare(b.time))
+            .map((entry) => ({ entry, date: dateKey }))
+        : (() => {
+            const found = getMostRecentFood();
+            return found ? [found] : [];
+          })();
+    return meals.map(({ entry, date }) => {
+      const ms = instant(date, entry.time, appSettings.timezone);
+      const label = formatHoursRounded(Date.now() - ms);
+      const desc = entry.note ? ` (${entry.note})` : "";
+      return `🥕${desc} — ${label} ago`;
+    });
   };
   const buildDayItemsForHistory = historyItems;
   const getSymptomFoodContext = (from, to, hours, severity) =>
@@ -1193,7 +1213,7 @@ export default () => {
     isSuppScheduledToday,
     getTodayEntries,
     getMostRecentWeight,
-    getTimeSinceLastMealLabel,
+    getMealNoteLines,
     buildDayItemsForHistory,
     getSymptomFoodContext,
     addEntry,
