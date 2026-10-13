@@ -121,6 +121,17 @@ export default () => {
     const minutes = totalMinutes % 60;
     return `${hours}h ${minutes}m`;
   };
+  // Rounds to the nearest half hour, e.g. "5.5 hrs" — used only for the
+  // auto-generated note lines, which don't need minute-level precision.
+  const formatHoursRounded = (ms) => {
+    const hours = Math.round((Math.max(0, ms) / 3600000) * 2) / 2;
+    const value = Number.isInteger(hours) ? String(hours) : hours.toFixed(1);
+    return `${value} hrs`;
+  };
+  const getElapsedFastHoursLabel = () =>
+    activeFast
+      ? formatHoursRounded(Date.now() - activeFast.startTimestampMs)
+      : null;
   const getNextFastPrediction = () =>
     fastReminder(
       appSettings.fastingStartTime,
@@ -188,10 +199,7 @@ export default () => {
     const found = getMostRecentFood();
     if (!found) return null;
     const ms = instant(found.date, found.entry.time, appSettings.timezone);
-    const totalMinutes = Math.max(0, Math.floor((Date.now() - ms) / 60000));
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    return `${hours}h ${minutes}m`;
+    return formatHoursRounded(Date.now() - ms);
   };
   const buildDayItemsForHistory = historyItems;
   const getSymptomFoodContext = (from, to, hours, severity) =>
@@ -1176,6 +1184,7 @@ export default () => {
     stopFast,
     saveActiveFastStartTime,
     getElapsedFastLabel,
+    getElapsedFastHoursLabel,
     getNextFastPrediction,
     getFastTargetEnd,
     formatTime12h,

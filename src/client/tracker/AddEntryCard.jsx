@@ -10,8 +10,7 @@ export default function AddEntryCard({ model }) {
     setFormData,
     addEntry,
     getCurrentTimeHHMM,
-    activeFast,
-    getElapsedFastLabel,
+    getElapsedFastHoursLabel,
     getTimeSinceLastMealLabel,
   } = model;
   const isViewingToday =
@@ -173,9 +172,10 @@ export default function AddEntryCard({ model }) {
                   style={styles.textarea}
                 />
                 {(() => {
+                  const fastLabel = getElapsedFastHoursLabel();
                   const mealLabel = getTimeSinceLastMealLabel();
                   const autoLine = [
-                    activeFast ? `⌛ Fasting for ${getElapsedFastLabel()}` : "",
+                    fastLabel ? `⌛ Fasting for ${fastLabel}` : "",
                     mealLabel ? `🥕 ${mealLabel} since last meal` : "",
                   ]
                     .filter(Boolean)
@@ -199,11 +199,10 @@ export default function AddEntryCard({ model }) {
                 <button
                   onClick={async () => {
                     if (formData.symptom) {
+                      const fastLabel = getElapsedFastHoursLabel();
                       const mealLabel = getTimeSinceLastMealLabel();
                       const autoLine = [
-                        activeFast
-                          ? `⌛ Fasting for ${getElapsedFastLabel()}`
-                          : "",
+                        fastLabel ? `⌛ Fasting for ${fastLabel}` : "",
                         mealLabel ? `🥕 ${mealLabel} since last meal` : "",
                       ]
                         .filter(Boolean)
