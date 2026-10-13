@@ -20,6 +20,7 @@ export default function Dashboard({ model }) {
     getNextFastPrediction,
     startFast,
     fastingStatus,
+    getEatingWindowStatus,
     todayData,
     showWeightEntryForm,
     setShowWeightEntryForm,
@@ -323,6 +324,18 @@ export default function Dashboard({ model }) {
             )
           ) : (
             <div>
+              {fastingStatus && (
+                <div
+                  style={{
+                    textAlign: "right",
+                    fontSize: "12px",
+                    color: "#999",
+                    marginBottom: "0.25rem",
+                  }}
+                >
+                  Last fast {fastingStatus.hours}h
+                </div>
+              )}
               {(() => {
                 const next = getNextFastPrediction();
                 const urgencyColors = {
@@ -373,11 +386,8 @@ export default function Dashboard({ model }) {
 
               {fastingStatus
                 ? (() => {
-                    const goalHours = appSettings.fastingGoalHours || 16;
-                    const percent = fastingStatus.goal.percent;
-                    const percentColor = fastingStatus.goal.goalMet
-                      ? "#27ae60"
-                      : "#f39c12";
+                    const progress = getEatingWindowStatus();
+                    if (!progress) return null;
                     const next = getNextFastPrediction();
                     const urgencyColors = {
                       gray: "#999",
@@ -385,112 +395,78 @@ export default function Dashboard({ model }) {
                       yellow: "#f39c12",
                       red: "#e74c3c",
                     };
-                    const nextColor = urgencyColors[next.urgency];
-                    const nextBig = next.isOverdue
-                      ? "Overdue"
-                      : `${next.hoursPart}h ${next.minutesPart}m`;
-                    const nextSub = next.isOverdue
-                      ? `${next.hoursPart}h ${next.minutesPart}m past ${formatTime12h(next.time)}`
-                      : `at ${formatTime12h(next.time)}`;
+                    const fillColor = next.isOverdue
+                      ? urgencyColors[next.urgency]
+                      : "#27ae60";
+                    const arrowColor = next.isOverdue ? fillColor : "#1e7e4f";
+                    const summary = next.isOverdue
+                      ? `${next.hoursPart}h ${next.minutesPart}m overdue`
+                      : `${progress.elapsedHoursPart}h ${progress.elapsedMinutesPart}m in · ${next.hoursPart}h ${next.minutesPart}m to go`;
                     return (
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-around",
-                          textAlign: "center",
-                          flexWrap: "wrap",
-                          gap: "1rem",
-                        }}
-                      >
-                        <div>
-                          <div
-                            style={{
-                              fontSize: "26px",
-                              fontWeight: "700",
-                              color: "#333",
-                            }}
-                          >
-                            {fastingStatus.hours}h
-                          </div>
-                          <div
-                            style={{
-                              fontSize: "12px",
-                              color: "#666",
-                              marginTop: "0.2rem",
-                            }}
-                          >
-                            Last Fast
-                          </div>
-                          <div
-                            style={{
-                              fontSize: "11px",
-                              color: "#999",
-                              marginTop: "0.1rem",
-                            }}
-                          >
-                            {formatTime12h(fastingStatus.start)} –{" "}
-                            {formatTime12h(fastingStatus.end)}
-                          </div>
+                      <div>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontSize: "11px",
+                            color: "#999",
+                            marginBottom: "4px",
+                          }}
+                        >
+                          <span>{formatTime12h(progress.startTime)}</span>
+                          <span>{formatTime12h(progress.endTime)} →</span>
                         </div>
-                        <div>
+                        <div
+                          style={{
+                            position: "relative",
+                            height: "14px",
+                            marginBottom: "10px",
+                          }}
+                        >
                           <div
                             style={{
-                              fontSize: "26px",
-                              fontWeight: "700",
-                              color: percentColor,
+                              position: "absolute",
+                              left: 0,
+                              top: "3px",
+                              height: "8px",
+                              width: "100%",
+                              borderRadius: "4px",
+                              backgroundColor: "#e6e6e6",
                             }}
-                          >
-                            {percent}%
-                          </div>
+                          />
                           <div
                             style={{
-                              fontSize: "12px",
-                              color: "#666",
-                              marginTop: "0.2rem",
+                              position: "absolute",
+                              left: 0,
+                              top: "3px",
+                              height: "8px",
+                              width: `${progress.percent}%`,
+                              borderRadius: "4px",
+                              backgroundColor: fillColor,
                             }}
-                          >
-                            {fastingStatus.goal.goalMet
-                              ? "Goal met"
-                              : "Goal Progress"}
-                          </div>
+                          />
                           <div
                             style={{
-                              fontSize: "11px",
-                              color: "#999",
-                              marginTop: "0.1rem",
+                              position: "absolute",
+                              left: `${progress.percent}%`,
+                              top: "50%",
+                              transform: "translate(-30%, -50%)",
+                              width: 0,
+                              height: 0,
+                              borderTop: "7px solid transparent",
+                              borderBottom: "7px solid transparent",
+                              borderLeft: `11px solid ${arrowColor}`,
                             }}
-                          >
-                            {fastingStatus.hours}h / {goalHours}h
-                          </div>
+                          />
                         </div>
-                        <div>
-                          <div
-                            style={{
-                              fontSize: "26px",
-                              fontWeight: "700",
-                              color: nextColor,
-                            }}
-                          >
-                            {nextBig}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: "12px",
-                              color: "#666",
-                              marginTop: "0.2rem",
-                            }}
-                          >
-                            Next Fast
-                          </div>
-                          <div
-                            style={{
-                              fontSize: "11px",
-                              color: "#999",
-                              marginTop: "0.1rem",
-                            }}
-                          >
-                            {nextSub}
-                          </div>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            fontSize: "13px",
+                            color: "#666",
+                          }}
+                        >
+                          {summary}
                         </div>
                       </div>
                     );

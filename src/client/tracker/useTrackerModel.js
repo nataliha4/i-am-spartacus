@@ -824,6 +824,28 @@ export default () => {
       ),
       start: fast.start,
       end: fast.end,
+      endTimestampMs: fast.endTimestampMs,
+    };
+  };
+  // Where "now" sits between the last fast ending and the next one starting,
+  // for the eating-window progress bar.
+  const getEatingWindowStatus = () => {
+    const status = getFastingStatus();
+    if (!status) return null;
+    const next = getNextFastPrediction();
+    const startMs = status.endTimestampMs;
+    const endMs = instant(dateKey, next.time, appSettings.timezone);
+    const totalMs = Math.max(1, endMs - startMs);
+    const elapsedMs = Math.min(totalMs, Math.max(0, Date.now() - startMs));
+    const percent = Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100));
+    const elapsedMinutes = Math.floor(elapsedMs / 60000);
+    return {
+      percent,
+      elapsedHoursPart: Math.floor(elapsedMinutes / 60),
+      elapsedMinutesPart: elapsedMinutes % 60,
+      startTime: status.end,
+      endTime: next.time,
+      isOverdue: next.isOverdue,
     };
   };
   const isRecurringFailed = (key) => {
@@ -1269,6 +1291,7 @@ export default () => {
     isEditing,
     todayData,
     getFastingStatus,
+    getEatingWindowStatus,
     isRecurringFailed,
     markRecurringFailed,
     clearRecurringFailed,
