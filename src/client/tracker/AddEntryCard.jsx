@@ -172,19 +172,18 @@ export default function AddEntryCard({ model }) {
                   }
                   style={styles.textarea}
                 />
-                {activeFast && (
-                  <div style={styles.entryMeta}>
-                    ⏳ Currently fasting for {getElapsedFastLabel()} — this will
-                    be added to your notes.
-                  </div>
-                )}
                 {(() => {
                   const mealLabel = getTimeSinceLastMealLabel();
+                  const autoLine = [
+                    activeFast ? `⌛ Fasting for ${getElapsedFastLabel()}` : "",
+                    mealLabel ? `🥕 ${mealLabel} since last meal` : "",
+                  ]
+                    .filter(Boolean)
+                    .join("  ");
                   return (
-                    mealLabel && (
+                    autoLine && (
                       <div style={styles.entryMeta}>
-                        🍎 Last meal was {mealLabel} ago — this will be added to
-                        your notes.
+                        {autoLine} — this will be added to your notes.
                       </div>
                     )
                   );
@@ -201,13 +200,15 @@ export default function AddEntryCard({ model }) {
                   onClick={async () => {
                     if (formData.symptom) {
                       const mealLabel = getTimeSinceLastMealLabel();
-                      const autoNotes = [
+                      const autoLine = [
                         activeFast
-                          ? `Fasting for ${getElapsedFastLabel()}`
+                          ? `⌛ Fasting for ${getElapsedFastLabel()}`
                           : "",
-                        mealLabel ? `${mealLabel} since last meal` : "",
-                      ].filter(Boolean);
-                      const notes = [formData.symptomNotes, ...autoNotes]
+                        mealLabel ? `🥕 ${mealLabel} since last meal` : "",
+                      ]
+                        .filter(Boolean)
+                        .join("  ");
+                      const notes = [formData.symptomNotes, autoLine]
                         .filter(Boolean)
                         .join("\n");
                       if (
