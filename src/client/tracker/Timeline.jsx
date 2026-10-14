@@ -1,3 +1,4 @@
+import NoteLine from "./NoteLine";
 export default function Timeline({ model }) {
   const {
     styles,
@@ -780,10 +781,13 @@ export default function Timeline({ model }) {
                             marginTop: "0.3rem",
                             fontSize: "14px",
                             color: "#666",
-                            whiteSpace: "pre-line",
                           }}
                         >
-                          {item.detail}
+                          {item.detail.split("\n").map((line, i) => (
+                            <div key={i}>
+                              <NoteLine line={line} />
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>

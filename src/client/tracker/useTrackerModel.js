@@ -218,7 +218,7 @@ export default () => {
       const ms = instant(date, entry.time, appSettings.timezone);
       const label = formatHoursRounded(Date.now() - ms);
       const desc = entry.note ? ` (${entry.note})` : "";
-      return `🥕${desc} — ${label} ago`;
+      return `🥕 ${label} ago${desc}`;
     });
   };
   const buildDayItemsForHistory = historyItems;

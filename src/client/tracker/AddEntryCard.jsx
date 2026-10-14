@@ -1,4 +1,5 @@
 import { localDate } from "../../shared/model";
+import NoteLine from "./NoteLine";
 export default function AddEntryCard({ model }) {
   const {
     currentDate,
@@ -181,7 +182,9 @@ export default function AddEntryCard({ model }) {
                     autoLines.length > 0 && (
                       <div style={styles.entryMeta}>
                         {autoLines.map((line, i) => (
-                          <div key={i}>{line}</div>
+                          <div key={i}>
+                            <NoteLine line={line} />
+                          </div>
                         ))}
                         This will be added to your notes.
                       </div>
