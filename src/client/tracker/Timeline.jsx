@@ -785,7 +785,7 @@ export default function Timeline({ model }) {
                         >
                           {item.detail.split("\n").map((line, i) => (
                             <div key={i}>
-                              <NoteLine line={line} />
+                              <NoteLine line={line} collapsible />
                             </div>
                           ))}
                         </div>
