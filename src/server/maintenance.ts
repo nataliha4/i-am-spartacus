@@ -49,8 +49,15 @@ export function startMaintenance(database: Database) {
   const tick = () => {
     if (running) return;
     running = pruneExpired(database)
-      .catch(() =>
-        console.error(JSON.stringify({ event: "maintenance_failed" })),
+      .catch((error) =>
+        console.error(
+          JSON.stringify({
+            event: "maintenance_failed",
+            name: error instanceof Error ? error.name : typeof error,
+            message: error instanceof Error ? error.message : String(error),
+            code: (error as { code?: unknown })?.code,
+          }),
+        ),
       )
       .finally(() => {
         running = undefined;

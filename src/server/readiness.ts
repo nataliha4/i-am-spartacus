@@ -11,7 +11,17 @@ export function cacheReadiness(
     if (now() < expires) return Promise.resolve(cached);
     pending = Promise.resolve()
       .then(check)
-      .catch(() => "unavailable" as const)
+      .catch((error) => {
+        console.error(
+          JSON.stringify({
+            event: "readiness_check_failed",
+            name: error instanceof Error ? error.name : typeof error,
+            message: error instanceof Error ? error.message : String(error),
+            code: (error as { code?: unknown })?.code,
+          }),
+        );
+        return "unavailable" as const;
+      })
       .then((status) => {
         cached = status;
         expires = now() + 5000;
