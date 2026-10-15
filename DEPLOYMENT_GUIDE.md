@@ -65,19 +65,19 @@ After the first deployment, open the old URL in the browser that contains the or
 
 ## Configuration
 
-| Variable                 | Purpose                                                                                 |
-| ------------------------ | --------------------------------------------------------------------------------------- |
-| `DATABASE_URL`           | Shared PostgreSQL connection for the app and migrations                                 |
-| `MIGRATION_DATABASE_URL` | Optional migration-only override; defaults to `DATABASE_URL`                            |
-| `BETTER_AUTH_SECRET`     | Stable random secret, at least 32 characters                                            |
-| `BETTER_AUTH_URL`        | External origin, e.g. `https://tracker.example.com`; the only trusted origin            |
-| `PORT`                   | Default `3000`                                                                          |
-| `DB_POOL_MAX`            | Connections per instance; default `5`                                                   |
-| `DB_SSL`                 | `disable` locally; `require` for certificate-verified TLS                               |
-| `DB_SSL_CA_FILE`         | Optional custom CA certificate path                                                     |
-| `TRUST_PROXY`            | Default `false`; enabling requires `TRUSTED_PROXY_CIDRS`                                |
-| `TRUSTED_PROXY_CIDRS`    | Comma-separated actual proxy IPs/CIDRs; the socket peer anchors forwarded-IP resolution |
-| `STATIC_DIR`             | Built frontend location; default `dist/client`                                          |
+| Variable                 | Purpose                                                                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`           | Shared PostgreSQL connection for the app and migrations                                                                              |
+| `MIGRATION_DATABASE_URL` | Optional migration-only override; defaults to `DATABASE_URL`                                                                         |
+| `BETTER_AUTH_SECRET`     | Stable random secret, at least 32 characters                                                                                         |
+| `BETTER_AUTH_URL`        | External origin, e.g. `https://tracker.example.com`; the only trusted origin                                                         |
+| `PORT`                   | Default `3000`                                                                                                                       |
+| `DB_POOL_MAX`            | Connections per instance; default `5`                                                                                                |
+| `DB_SSL`                 | `disable` locally; `require` for certificate-verified TLS; `no-verify` encrypts without verifying the server cert (interim use only) |
+| `DB_SSL_CA_FILE`         | Optional custom CA certificate path                                                                                                  |
+| `TRUST_PROXY`            | Default `false`; enabling requires `TRUSTED_PROXY_CIDRS`                                                                             |
+| `TRUSTED_PROXY_CIDRS`    | Comma-separated actual proxy IPs/CIDRs; the socket peer anchors forwarded-IP resolution                                              |
+| `STATIC_DIR`             | Built frontend location; default `dist/client`                                                                                       |
 
 Keep credentials out of Git and frontend builds. Every instance's pool counts against the cluster connection budget. Connect to CNPG's writer service, not a read replica.
 

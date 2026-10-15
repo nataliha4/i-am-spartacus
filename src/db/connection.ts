@@ -15,7 +15,14 @@ export function connect(
             ? { ca: readFileSync(process.env.DB_SSL_CA_FILE, "utf8") }
             : {}),
         }
-      : false;
+      : // Encrypts the connection without verifying the server's certificate
+        // chain — a deliberate interim stance (e.g. while a DB cert is being
+        // renewed), not a default. Still vulnerable to an on-path attacker
+        // substituting a cert; DB_SSL=require is what actually authenticates
+        // the server.
+        process.env.DB_SSL === "no-verify"
+        ? { rejectUnauthorized: false }
+        : false;
   const client = postgres(url, {
     max,
     ssl,
