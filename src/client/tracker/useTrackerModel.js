@@ -215,7 +215,11 @@ export default () => {
             return found ? [found] : [];
           })();
     return meals.map(({ entry, date }) => {
-      const ms = instant(date, entry.time, appSettings.timezone);
+      const ms = instant(
+        date,
+        entry.time,
+        entry.timezone ?? appSettings.timezone,
+      );
       const label = formatHoursRounded(Date.now() - ms);
       const desc = entry.note ? ` (${entry.note})` : "";
       return `🥕 ${label} ago${desc}`;
@@ -237,6 +241,7 @@ export default () => {
       minute: "2-digit",
       hour12: true,
     });
+    const timezone = appSettings.timezone;
     if (
       !(await setEntries((prev) => ({
         ...prev,
@@ -248,6 +253,7 @@ export default () => {
                 {
                   ...data,
                   timestamp,
+                  timezone,
                   id: crypto.randomUUID(),
                 },
               ]
@@ -255,6 +261,7 @@ export default () => {
                 {
                   ...data,
                   timestamp,
+                  timezone,
                   id: crypto.randomUUID(),
                 },
               ],

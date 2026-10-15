@@ -65,6 +65,10 @@ export const defaults = {
   fastingStartTime: "16:00",
   timezone: "UTC",
 };
+// Absent on entries logged before this field existed, and on any entry with
+// no time of day set — those fall back to the account's current timezone
+// setting when their elapsed-time math needs a zone.
+const entryTimezone = settingsSchema.shape.timezone.optional();
 const entrySchemas = {
   supplements: z
     .object({
@@ -72,6 +76,7 @@ const entrySchemas = {
       time: optionalTime,
       notes: text.optional(),
       timestamp: text.optional(),
+      timezone: entryTimezone,
     })
     .strict(),
   symptoms: z
@@ -81,6 +86,7 @@ const entrySchemas = {
       time: optionalTime,
       notes: text.optional(),
       timestamp: text.optional(),
+      timezone: entryTimezone,
     })
     .strict(),
   food: z
@@ -89,6 +95,7 @@ const entrySchemas = {
       time: optionalTime,
       notes: text.optional(),
       timestamp: text.optional(),
+      timezone: entryTimezone,
     })
     .strict(),
   gym: z
@@ -97,6 +104,7 @@ const entrySchemas = {
       time: optionalTime,
       notes: text.optional(),
       timestamp: text.optional(),
+      timezone: entryTimezone,
     })
     .strict(),
   medical: z
@@ -105,6 +113,7 @@ const entrySchemas = {
       time: optionalTime,
       notes: text.optional(),
       timestamp: text.optional(),
+      timezone: entryTimezone,
     })
     .strict(),
   weight: z
@@ -113,6 +122,7 @@ const entrySchemas = {
       target: z.union([positive, z.literal("")]).optional(),
       time: optionalTime,
       timestamp: text.optional(),
+      timezone: entryTimezone,
     })
     .strict(),
 };

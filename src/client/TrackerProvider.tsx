@@ -205,6 +205,16 @@ export function TrackerProvider({
     setFailure(null);
     return query.refetch();
   };
+  // Silently adopt the device's current zone as "current" when it drifts
+  // from the saved setting (e.g. the user has traveled). Past entries keep
+  // whatever zone they were logged in, so their own elapsed-time math stays
+  // correct; only entries logged from now on pick up the new zone.
+  const savedTimezone = state.appSettings.timezone;
+  useEffect(() => {
+    if (busy || pending.current || !savedTimezone || savedTimezone === timezone)
+      return;
+    void update("appSettings")((prev) => ({ ...prev, timezone }));
+  }, [savedTimezone, timezone, busy]);
   if (query.error instanceof ApiError && query.error.status === 401)
     return <SessionExpired onExpired={onExpired} />;
   if (!query.data)
