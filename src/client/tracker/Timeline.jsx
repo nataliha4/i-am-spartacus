@@ -619,25 +619,47 @@ export default function Timeline({ model }) {
                           }
                           style={styles.editInput}
                         />
-                        <label
-                          style={{
-                            fontSize: "13px",
-                            color: "#666",
-                          }}
-                        >
-                          Time
-                        </label>
-                        <input
-                          type="time"
-                          value={editData.time || ""}
-                          onChange={(e) =>
-                            setEditData({
-                              ...editData,
-                              time: e.target.value,
-                            })
-                          }
-                          style={styles.editInput}
-                        />
+                        <div style={styles.twoColumnForm}>
+                          <div>
+                            <label
+                              style={{
+                                fontSize: "13px",
+                                color: "#666",
+                              }}
+                            >
+                              Date
+                            </label>
+                            <input
+                              type="date"
+                              value={model.editDate}
+                              onChange={(e) =>
+                                model.setEditDate(e.target.value)
+                              }
+                              style={styles.editInput}
+                            />
+                          </div>
+                          <div>
+                            <label
+                              style={{
+                                fontSize: "13px",
+                                color: "#666",
+                              }}
+                            >
+                              Time
+                            </label>
+                            <input
+                              type="time"
+                              value={editData.time || ""}
+                              onChange={(e) =>
+                                setEditData({
+                                  ...editData,
+                                  time: e.target.value,
+                                })
+                              }
+                              style={styles.editInput}
+                            />
+                          </div>
+                        </div>
                       </>
                     )}
                     {item.category === "weight" && (

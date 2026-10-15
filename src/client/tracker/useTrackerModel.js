@@ -763,7 +763,7 @@ export default () => {
     }));
   const saveEdit = async (category) => {
     const targetDate =
-      category === "symptoms"
+      category === "symptoms" || category === "timezone"
         ? editDate
         : category === "fasting"
           ? localDate(
