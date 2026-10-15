@@ -1100,6 +1100,20 @@ export default () => {
         entry: entry,
       });
     });
+    // Auto-logged when the account's timezone changes (e.g. while
+    // traveling). Shown read-only — there's nothing to edit on it.
+    (todayData.timezone || []).forEach((entry) => {
+      items.push({
+        id: "tz-" + entry.id,
+        time: entry.time || null,
+        icon: "🌐",
+        label: "Timezone changed",
+        detail: `${entry.from} → ${entry.to}`,
+        category: null,
+        entry: null,
+        milestone: true,
+      });
+    });
     (todayData.fasting || []).forEach((entry) => {
       let crossesMidnight = false;
       let durationLabel = "";

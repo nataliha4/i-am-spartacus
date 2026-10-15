@@ -8,8 +8,19 @@ import {
 } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "./api";
-import { canonical, type Kind, type Snapshot } from "../shared/model";
-import { diffState, project, type LegacyState } from "../shared/legacy";
+import {
+  canonical,
+  localDate,
+  localTime,
+  type Kind,
+  type Snapshot,
+} from "../shared/model";
+import {
+  diffState,
+  project,
+  type LegacyEntry,
+  type LegacyState,
+} from "../shared/legacy";
 
 type Update<T> = T | ((previous: T) => T);
 type Save = (path: string, body: unknown) => Promise<boolean>;
@@ -208,12 +219,35 @@ export function TrackerProvider({
   // Silently adopt the device's current zone as "current" when it drifts
   // from the saved setting (e.g. the user has traveled). Past entries keep
   // whatever zone they were logged in, so their own elapsed-time math stays
-  // correct; only entries logged from now on pick up the new zone.
+  // correct; only entries logged from now on pick up the new zone. A
+  // "timezone" entry is logged on the day the switch happened so it shows
+  // up in the Day Timeline alongside everything else.
   const savedTimezone = state.appSettings.timezone;
   useEffect(() => {
     if (busy || pending.current || !savedTimezone || savedTimezone === timezone)
       return;
-    void update("appSettings")((prev) => ({ ...prev, timezone }));
+    const from = savedTimezone;
+    const to = timezone;
+    const day = localDate(Date.now(), to);
+    const time = localTime(Date.now(), to);
+    void (async () => {
+      if (
+        !(await update("entries")((prev) => ({
+          ...prev,
+          [day]: {
+            ...prev[day],
+            timezone: [
+              ...((Array.isArray(prev[day]?.timezone)
+                ? prev[day].timezone
+                : []) as LegacyEntry[]),
+              { id: crypto.randomUUID(), from, to, time },
+            ] as LegacyEntry[],
+          },
+        })))
+      )
+        return;
+      void update("appSettings")((prev) => ({ ...prev, timezone: to }));
+    })();
   }, [savedTimezone, timezone, busy]);
   if (query.error instanceof ApiError && query.error.status === 401)
     return <SessionExpired onExpired={onExpired} />;

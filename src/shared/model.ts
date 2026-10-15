@@ -15,6 +15,7 @@ export const categories = [
   "gym",
   "medical",
   "weight",
+  "timezone",
 ] as const;
 /** Checklist key marking that today's weigh-in was skipped. */
 export const WEIGHT_CHECKLIST_KEY = "weight";
@@ -123,6 +124,19 @@ const entrySchemas = {
       time: optionalTime,
       timestamp: text.optional(),
       timezone: entryTimezone,
+    })
+    .strict(),
+  // Auto-logged whenever the account's timezone setting changes, so past
+  // elapsed-time math near the switch can be understood in context. Not
+  // user-editable; "timezone" here is the field's own payload (the new
+  // zone), separate from the generic per-entry `timezone` other categories
+  // carry, which this category has no use for.
+  timezone: z
+    .object({
+      from: settingsSchema.shape.timezone,
+      to: settingsSchema.shape.timezone,
+      time: optionalTime,
+      timestamp: text.optional(),
     })
     .strict(),
 };
