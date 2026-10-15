@@ -1101,7 +1101,8 @@ export default () => {
       });
     });
     // Auto-logged when the account's timezone changes (e.g. while
-    // traveling). Shown read-only — there's nothing to edit on it.
+    // traveling). Editable/deletable like any other entry, e.g. to remove
+    // a duplicate.
     (todayData.timezone || []).forEach((entry) => {
       items.push({
         id: "tz-" + entry.id,
@@ -1109,8 +1110,8 @@ export default () => {
         icon: "🌐",
         label: "Timezone changed",
         detail: `${entry.from} → ${entry.to}`,
-        category: null,
-        entry: null,
+        category: "timezone",
+        entry: entry,
         milestone: true,
       });
     });
